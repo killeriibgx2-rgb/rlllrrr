@@ -3,6 +3,7 @@
   "minVersion": "0.8",
   "package": "com.zzynes.flydrone.mixin",
   "compatibilityLevel": "JAVA_17",
+  "plugin": "com.zzynes.flydrone.mixin.FlyDroneMixinPlugin",
   "refmap": "fly_drone-refmap.json",
   "mixins": [
     "ChunkMapMixin",
@@ -10,6 +11,7 @@
   ],
   "client": [
     "LevelRendererMixin",
+    "LevelRendererVanillaOriginMixin",
     "CameraMixin",
     "ClientPacketListenerMixin"
   ],
