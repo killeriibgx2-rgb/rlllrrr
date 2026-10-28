@@ -10,6 +10,7 @@ import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.ArrayList;
 import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = FlyDroneMod.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
@@ -32,6 +33,20 @@ public class VverClient {
                 models.put(key, new SuzFrameBakedModel(existing));
             }
         }
+        for (int part = 0; part < TvsBlock.STRUCTURE_HEIGHT; part++) {
+            for (boolean hasRods : new boolean[]{false, true}) {
+                ModelResourceLocation key = new ModelResourceLocation(FlyDroneMod.MOD_ID, "vver_tvs", "has_rods=" + hasRods + ",part=" + part);
+                BakedModel existing = models.get(key);
+                if (existing != null) {
+                    models.put(key, new SuzFrameBakedModel(existing));
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> MenuScreens.register(VverRegistry.TVS_MENU.get(), TvsScreen::new));
     }
 
     @SubscribeEvent

@@ -48,6 +48,7 @@ public class ModCreativeTabs {
                         output.accept(DommRegistry.DOMM_BODY_ITEM.get());
                         output.accept(DommRegistry.DOMM_INTERFACE_ITEM.get());
                         output.accept(VverRegistry.SUZ_ITEM.get());
+                        output.accept(VverRegistry.TVS_ITEM.get());
                         output.accept(ModBlocks.ALUMINUM_BLOCK.get());
                         output.accept(ModBlocks.LITHIUM_BLOCK.get());
                         output.accept(RadioMod.RADIO.get());

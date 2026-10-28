@@ -18,6 +18,8 @@ public class VverRegistry {
             DeferredRegister.create(ForgeRegistries.ITEMS, FlyDroneMod.MOD_ID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, FlyDroneMod.MOD_ID);
+    public static final DeferredRegister<MenuType<?>> MENUS =
+            DeferredRegister.create(ForgeRegistries.MENU_TYPES, FlyDroneMod.MOD_ID);
 
     public static final RegistryObject<Block> SUZ_BLOCK =
             BLOCKS.register("vver_suz", SuzBlock::new);

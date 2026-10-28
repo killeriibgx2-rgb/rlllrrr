@@ -46,6 +46,7 @@
   "key.fly_drone.radio_menu": "Меню рации",
   "item.fly_drone.handheld_siren": "Ручная сирена",
   "block.fly_drone.vver_suz": "СУЗ ВВЭР",
+  "block.fly_drone.vver_tvs": "ТВС ВВЭР",
   "item.fly_drone.rpg_snar": "Снаряд РПГ-74",
   "item.fly_drone.ci4": "С4"
 }

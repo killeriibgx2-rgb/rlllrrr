@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "has_rods=false,part=0": {
+      "model": "fly_drone:block/tvs_frame_bottom"
+    },
+    "has_rods=true,part=0": {
+      "model": "fly_drone:block/tvs_loaded_bottom"
+    },
+    "has_rods=false,part=1": {
+      "model": "fly_drone:block/tvs_frame_middle"
+    },
+    "has_rods=true,part=1": {
+      "model": "fly_drone:block/tvs_loaded_middle"
+    },
+    "has_rods=false,part=2": {
+      "model": "fly_drone:block/tvs_frame_top"
+    },
+    "has_rods=true,part=2": {
+      "model": "fly_drone:block/tvs_loaded_top"
+    }
+  }
+}
