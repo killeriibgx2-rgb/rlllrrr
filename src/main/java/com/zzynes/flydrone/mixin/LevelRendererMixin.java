@@ -33,7 +33,8 @@ public abstract class LevelRendererMixin {
 
     @Inject(
             method = "setupRender(Lnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/culling/Frustum;ZZ)V",
-            at = @At("HEAD")
+            at = @At("HEAD"),
+            require = 0
     )
     private void flyDrone$onSetupRenderHead(Camera camera, Frustum frustum, boolean capturedFrustum, boolean isSpectator, CallbackInfo ci) {
         if (FpvKillcamManager.isActive()) {
@@ -43,7 +44,8 @@ public abstract class LevelRendererMixin {
 
     @Redirect(
             method = "setupRender(Lnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/culling/Frustum;ZZ)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getX()D")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getX()D"),
+            require = 0
     )
     private double flyDrone$cameraEntityX(LocalPlayer player) {
         if (FpvKillcamManager.isActive()) {
@@ -56,7 +58,8 @@ public abstract class LevelRendererMixin {
 
     @Redirect(
             method = "setupRender(Lnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/culling/Frustum;ZZ)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getY()D")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getY()D"),
+            require = 0
     )
     private double flyDrone$cameraEntityY(LocalPlayer player) {
         if (FpvKillcamManager.isActive()) {
@@ -69,7 +72,8 @@ public abstract class LevelRendererMixin {
 
     @Redirect(
             method = "setupRender(Lnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/culling/Frustum;ZZ)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getZ()D")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getZ()D"),
+            require = 0
     )
     private double flyDrone$cameraEntityZ(LocalPlayer player) {
         if (FpvKillcamManager.isActive()) {
@@ -82,7 +86,8 @@ public abstract class LevelRendererMixin {
 
     @Redirect(
             method = "renderSky(Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Matrix4f;FLnet/minecraft/client/Camera;ZLjava/lang/Runnable;)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getEyePosition(F)Lnet/minecraft/world/phys/Vec3;")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getEyePosition(F)Lnet/minecraft/world/phys/Vec3;"),
+            require = 0
     )
     private Vec3 flyDrone$cameraEyePos(LocalPlayer player, float partialTick) {
         if (FpvKillcamManager.isActive()) {
@@ -96,7 +101,8 @@ public abstract class LevelRendererMixin {
     @Inject(
             method = "renderEntity(Lnet/minecraft/world/entity/Entity;DDDFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;)V",
             at = @At("HEAD"),
-            cancellable = true
+            cancellable = true,
+            require = 0
     )
     private void flyDrone$renderEntityTimeShifted(
             Entity entity,
