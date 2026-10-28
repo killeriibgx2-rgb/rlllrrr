@@ -1,6 +1,7 @@
 package com.zzynes.flydrone.VVER;
 
 import com.zzynes.flydrone.DRONE.FlyDroneMod;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
@@ -9,6 +10,7 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -33,9 +35,11 @@ public class VverClient {
                 models.put(key, new SuzFrameBakedModel(existing));
             }
         }
-        for (int part = 0; part < TvsBlock.STRUCTURE_HEIGHT; part++) {
-            for (boolean hasRods : new boolean[]{false, true}) {
-                ModelResourceLocation key = new ModelResourceLocation(FlyDroneMod.MOD_ID, "vver_tvs", "has_rods=" + hasRods + ",part=" + part);
+        for (ResourceLocation key : new ArrayList<>(models.keySet())) {
+            if (key instanceof ModelResourceLocation modelKey
+                    && modelKey.getNamespace().equals(FlyDroneMod.MOD_ID)
+                    && modelKey.getPath().equals("vver_tvs")
+                    && !modelKey.getVariant().equals("inventory")) {
                 BakedModel existing = models.get(key);
                 if (existing != null) {
                     models.put(key, new SuzFrameBakedModel(existing));
