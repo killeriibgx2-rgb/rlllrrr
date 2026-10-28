@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.zzynes.flydrone.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "fly_drone-refmap.json",
+  "mixins": [
+    "ChunkMapMixin",
+    "TrackedEntityMixin"
+  ],
+  "client": [
+    "LevelRendererMixin",
+    "CameraMixin",
+    "ClientPacketListenerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
