@@ -1,0 +1,58 @@
+plugins {
+    id "dev.architectury.loom" version "1.7-SNAPSHOT"
+    id "java"
+}
+
+version = "1.1.4"
+group = "com.zzynes.flydrone"
+
+base {
+    archivesName = "fly_drone"
+}
+
+loom {
+    silentMojangMappingsLicense()
+    forge {
+        mixinConfig "fly_drone.mixins.json"
+    }
+}
+
+repositories {
+    maven { url = "https://maven.minecraftforge.net/" }
+    maven { url = "https://maven.architectury.dev/" }
+    maven {
+        name = "GeckoLib"
+        url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
+        content {
+            includeGroupByRegex("software\\.bernie.*")
+            includeGroup("com.eliotlash.mclib")
+        }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:1.20.1"
+    mappings loom.officialMojangMappings()
+    forge "net.minecraftforge:forge:1.20.1-47.3.0"
+    modImplementation "software.bernie.geckolib:geckolib-forge-1.20.1:4.4.4"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 17
+}
+
+jar {
+    manifest {
+        attributes(
+            "MixinConfigs": "fly_drone.mixins.json"
+        )
+    }
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
