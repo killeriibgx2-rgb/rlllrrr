@@ -24,7 +24,8 @@ public abstract class CameraMixin {
 
     @Inject(
             method = "setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V",
-            at = @At("RETURN")
+            at = @At("RETURN"),
+            require = 0
     )
     private void flyDrone$applyKillcamOrbit(BlockGetter level, Entity entity, boolean detached, boolean mirrored, float partialTick, CallbackInfo ci) {
         if (!FpvKillcamManager.isActive()) {

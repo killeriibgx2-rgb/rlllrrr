@@ -3,6 +3,7 @@ package com.zzynes.flydrone.DRONE;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.logging.LogUtils;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -28,6 +29,7 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
+import org.slf4j.Logger;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
@@ -35,11 +37,13 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 @Mod.EventBusSubscriber(modid = FlyDroneMod.MOD_ID, value = Dist.CLIENT)
 public final class PipReplayRenderer {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int TARGET_WIDTH = 480;
     private static final int TARGET_HEIGHT = 270;
     private static final Matrix4f MAIN_PROJECTION = new Matrix4f();
     private static RenderTarget target;
     private static boolean rendering;
+    private static boolean secondaryRenderDisabled;
     private static boolean projectionCaptured;
     private static Vec3 cameraPosition = Vec3.ZERO;
     private static float cameraYaw;
@@ -71,6 +75,10 @@ public final class PipReplayRenderer {
     public static void drawReplay(GuiGraphics gui, int x, int y, int width, int height) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || !projectionCaptured || !ProjectileImpactPreview.isActive()) {
+            return;
+        }
+        if (rendering || secondaryRenderDisabled || ShaderCompatibility.isExternalShaderPackActive()) {
+            drawUnavailableFallback(gui, x, y, width, height);
             return;
         }
         if (target == null) {
@@ -106,6 +114,9 @@ public final class PipReplayRenderer {
             RenderSystem.viewport(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
             RenderSystem.setProjectionMatrix(projection, VertexSorting.DISTANCE_TO_ORIGIN);
             mc.levelRenderer.renderLevel(new PoseStack(), 1.0f, System.nanoTime(), false, camera, mc.gameRenderer, mc.gameRenderer.lightTexture(), projection);
+        } catch (RuntimeException | LinkageError e) {
+            secondaryRenderDisabled = true;
+            LOGGER.warn("Disabling Fly Drone PiP secondary world render for this session", e);
         } finally {
             mainTarget.bindWrite(true);
             RenderSystem.viewport(0, 0, windowWidth, windowHeight);
@@ -117,6 +128,10 @@ public final class PipReplayRenderer {
             RenderSystem.enableCull();
             RenderSystem.disableBlend();
             rendering = false;
+        }
+        if (secondaryRenderDisabled) {
+            drawUnavailableFallback(gui, x, y, width, height);
+            return;
         }
         gui.flush();
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
@@ -134,6 +149,13 @@ public final class PipReplayRenderer {
         BufferUploader.drawWithShader(builder.end());
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
+    }
+
+    private static void drawUnavailableFallback(GuiGraphics gui, int x, int y, int width, int height) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.font != null) {
+            gui.drawCenteredString(mc.font, "PIP: SAFE MODE", x + width / 2, y + height / 2 - 4, 0xFF9AC0C8);
+        }
     }
 
     @SubscribeEvent
