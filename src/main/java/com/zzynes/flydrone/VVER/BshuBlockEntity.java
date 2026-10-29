@@ -501,7 +501,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
             return getToggle(BshuToggle.TURBINE) ? BshuLampState.GREEN : BshuLampState.RED;
         }
         if (lampName.equals("t")) {
-            return this.alarmActive || hasUnacknowledgedErrors() ? blink(BshuLampState.RED, gameTime) : BshuLampState.OFF;
+            return this.alarmActive ? blink(BshuLampState.RED, gameTime) : BshuLampState.OFF;
         }
         if (lampName.startsWith("PUMP_")) {
             int index = lampName.charAt(5) - '1';

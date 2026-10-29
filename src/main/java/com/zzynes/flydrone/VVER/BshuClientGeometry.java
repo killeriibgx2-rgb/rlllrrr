@@ -223,11 +223,49 @@ public final class BshuClientGeometry {
         }
     }
 
-    private static void addScreenPlane(BshuScreenType type, Vec3[] points) {
-        Vec3 topLeft = points[0];
-        Vec3 topRight = points[1];
-        Vec3 bottomRight = points[2];
-        Vec3 bottomLeft = points[3];
+    private static float[][] normalizedUvs(GeoVertex[] vertices) {
+        float minU = Float.POSITIVE_INFINITY;
+        float maxU = Float.NEGATIVE_INFINITY;
+        float minV = Float.POSITIVE_INFINITY;
+        float maxV = Float.NEGATIVE_INFINITY;
+        for (int i = 0; i < 4; i++) {
+            minU = Math.min(minU, vertices[i].texU());
+            maxU = Math.max(maxU, vertices[i].texU());
+            minV = Math.min(minV, vertices[i].texV());
+            maxV = Math.max(maxV, vertices[i].texV());
+        }
+        float rangeU = Math.abs(maxU - minU) < 1.0e-8f ? 1.0f : maxU - minU;
+        float rangeV = Math.abs(maxV - minV) < 1.0e-8f ? 1.0f : maxV - minV;
+        float[][] result = new float[4][2];
+        for (int i = 0; i < 4; i++) {
+            result[i][0] = (vertices[i].texU() - minU) / rangeU;
+            result[i][1] = (vertices[i].texV() - minV) / rangeV;
+        }
+        return result;
+    }
+
+    private static void addScreenPlane(BshuScreenType type, Vec3[] points, GeoVertex[] vertices) {
+        float[][] uvs = normalizedUvs(vertices);
+        Vec3 topLeft = null;
+        Vec3 topRight = null;
+        Vec3 bottomRight = null;
+        Vec3 bottomLeft = null;
+        for (int i = 0; i < 4; i++) {
+            boolean left = uvs[i][0] < 0.5f;
+            boolean top = uvs[i][1] < 0.5f;
+            if (left && top) {
+                topLeft = points[i];
+            } else if (!left && top) {
+                topRight = points[i];
+            } else if (!left) {
+                bottomRight = points[i];
+            } else {
+                bottomLeft = points[i];
+            }
+        }
+        if (topLeft == null || topRight == null || bottomRight == null || bottomLeft == null) {
+            return;
+        }
         Vec3 u = bottomRight.subtract(bottomLeft);
         Vec3 v = topLeft.subtract(bottomLeft);
         Vec3 normal = u.cross(v);

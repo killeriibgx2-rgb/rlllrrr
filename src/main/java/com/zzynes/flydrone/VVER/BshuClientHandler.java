@@ -13,6 +13,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.MovementInputUpdateEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
@@ -89,7 +90,7 @@ public class BshuClientHandler {
         input.shiftKeyDown = false;
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
             return;
@@ -97,6 +98,9 @@ public class BshuClientHandler {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) {
             return;
+        }
+        if (minecraft.screen instanceof BshuFocusScreen focusScreen) {
+            focusScreen.reassertCamera();
         }
         BshuClientState.refreshKnownBshus(minecraft.level, minecraft.player);
         if (minecraft.level.getGameTime() % 100L == 0L) {

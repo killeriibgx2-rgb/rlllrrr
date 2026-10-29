@@ -116,6 +116,19 @@ public class BshuFocusScreen extends Screen {
         }
     }
 
+    public void reassertCamera() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (this.cameraMarker != null && minecraft.player != null && minecraft.getCameraEntity() != this.cameraMarker) {
+            minecraft.setCameraEntity(this.cameraMarker);
+            if (minecraft.levelRenderer != null) {
+                minecraft.levelRenderer.needsUpdate();
+            }
+        }
+        if (minecraft.options != null && minecraft.options.getCameraType() != CameraType.FIRST_PERSON) {
+            minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+        }
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT && button != GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
