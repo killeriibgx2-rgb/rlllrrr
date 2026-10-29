@@ -3,7 +3,7 @@ name: Fetch BSHU DropMeFiles
 on:
   push:
     branches:
-      - "arena/e691165d-rlllrrr"
+      - "arena/d917b94c-rlllrrr"
     paths:
       - "ci-output/fetch-bschu.trigger"
 
