@@ -1,0 +1,7 @@
+  .txt	18172	b262664d694a5364049d129a4988fe95d8e5cfd747f19de0e738328c57b4ee08	b'\xd0\x9e\xd0\xa2\xd0\x94\xd0\x95\xd0\x9b 1, \xd0\x9b'
+BSHU_full_buttons_animations_painted.bbmodel	1064360	1291b3a022452fdedf38f3ed22103131dd10e43906b09a8925041be6f55e9c32	b'{"meta":{"format'
+BSHU_full_buttons_animations_painted.geo.json	262980	9d23da19c43e608c12442f1f153ca42e704957679077f549c6af22b4fc45334d	b'{\n\t"format_versi'
+DropMeFiles_rxYEM.zip	1346154	9b8222fda7eb54a6ebfa405ea66f8610438022c01000464e639ff3c19dadb136	b'PK\x03\x04\n\x00\x08\x08\x00\x00\xc5\xa0]]\x00\x00'
+ZIP DropMeFiles_rxYEM.zip: BSHU_full_buttons_animations_painted.bbmodel, BSHU_full_buttons_animations_painted.geo.json, Новый текстовый документ.txt
+download_all.bin	1346154	cb3662e366ae3420f221e3317504ce8458714d1998ef97169a147ce7bda59212	b'PK\x03\x04\n\x00\x08\x08\x00\x00\xc6\xa0]]\x00\x00'
+ZIP download_all.bin: BSHU_full_buttons_animations_painted.bbmodel, BSHU_full_buttons_animations_painted.geo.json, Новый текстовый документ.txt
