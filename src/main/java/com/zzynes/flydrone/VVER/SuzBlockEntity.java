@@ -26,6 +26,7 @@ public class SuzBlockEntity extends BlockEntity {
     private float currentPercent = 0.0f;
     private float prevPercent = 0.0f;
     private float velocityPercent = 0.0f;
+    private int group = 0;
 
     public SuzBlockEntity(BlockPos pos, BlockState state) {
         super(VverRegistry.SUZ_BLOCK_ENTITY.get(), pos, state);
@@ -85,6 +86,22 @@ public class SuzBlockEntity extends BlockEntity {
         return (getInterpolatedPercent(partialTick) / 100.0f) * MAX_LIFT_BLOCKS;
     }
 
+    public int getGroup() {
+        return this.group;
+    }
+
+    public void setGroup(int group) {
+        int clamped = Mth.clamp(group, 0, 8);
+        if (this.group == clamped) {
+            return;
+        }
+        this.group = clamped;
+        this.setChanged();
+        if (this.level != null && !this.level.isClientSide) {
+            this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
+        }
+    }
+
     @Override
     public AABB getRenderBoundingBox() {
         return new AABB(
@@ -102,6 +119,7 @@ public class SuzBlockEntity extends BlockEntity {
         super.saveAdditional(tag);
         tag.putFloat("TargetPercent", this.targetPercent);
         tag.putFloat("CurrentPercent", this.currentPercent);
+        tag.putInt("Group", this.group);
     }
 
     @Override
@@ -109,6 +127,7 @@ public class SuzBlockEntity extends BlockEntity {
         super.load(tag);
         boolean wasEmpty = this.level == null;
         this.targetPercent = Mth.clamp(tag.getFloat("TargetPercent"), 0.0f, 100.0f);
+        this.group = Mth.clamp(tag.getInt("Group"), 0, 8);
         if (wasEmpty) {
             float savedCurrent = tag.contains("CurrentPercent") ? tag.getFloat("CurrentPercent") : this.targetPercent;
             this.currentPercent = Mth.clamp(savedCurrent, 0.0f, 100.0f);
@@ -124,6 +143,7 @@ public class SuzBlockEntity extends BlockEntity {
         CompoundTag tag = super.getUpdateTag();
         tag.putFloat("TargetPercent", this.targetPercent);
         tag.putFloat("CurrentPercent", this.currentPercent);
+        tag.putInt("Group", this.group);
         return tag;
     }
 
@@ -133,6 +153,7 @@ public class SuzBlockEntity extends BlockEntity {
         this.currentPercent = Mth.clamp(tag.getFloat("CurrentPercent"), 0.0f, 100.0f);
         this.prevPercent = this.currentPercent;
         this.velocityPercent = 0.0f;
+        this.group = Mth.clamp(tag.getInt("Group"), 0, 8);
     }
 
     @Nullable
@@ -146,6 +167,7 @@ public class SuzBlockEntity extends BlockEntity {
         CompoundTag tag = pkt.getTag();
         if (tag != null) {
             this.targetPercent = Mth.clamp(tag.getFloat("TargetPercent"), 0.0f, 100.0f);
+            this.group = Mth.clamp(tag.getInt("Group"), 0, 8);
         }
     }
 }

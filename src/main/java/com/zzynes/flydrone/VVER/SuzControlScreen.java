@@ -11,24 +11,29 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class SuzControlScreen extends Screen {
 
-    private static final int PANEL_W = 236;
-    private static final int PANEL_H = 148;
+    private static final int PANEL_W = 256;
+    private static final int PANEL_H = 188;
 
     private final BlockPos basePos;
+    private final List<Button> groupButtons = new ArrayList<>();
     private EditBox percentInput;
     private String errorText = "";
+    private int selectedGroup;
 
     public SuzControlScreen(BlockPos basePos) {
-        super(Component.literal("СУЗ ВВЭР — Тест выдвижения"));
+        super(Component.literal("СУЗ ВВЭР"));
         this.basePos = basePos;
     }
 
     @Override
     protected void init() {
+        this.groupButtons.clear();
         int left = (this.width - PANEL_W) / 2;
         int top = (this.height - PANEL_H) / 2;
 
@@ -36,7 +41,19 @@ public class SuzControlScreen extends Screen {
         SuzBlockEntity be = getBlockEntity();
         if (be != null) {
             initialTarget = be.getTargetPercent();
+            this.selectedGroup = be.getGroup();
         }
+
+        int groupButtonW = 22;
+        int groupGap = 3;
+        for (int i = 0; i <= 8; i++) {
+            int group = i;
+            Button button = this.addRenderableWidget(Button.builder(Component.literal(String.valueOf(i)), btn -> selectGroup(group))
+                    .bounds(left + 16 + i * (groupButtonW + groupGap), top + 68, groupButtonW, 18)
+                    .build());
+            this.groupButtons.add(button);
+        }
+        refreshGroupButtons();
 
         String initStr = (Math.abs(initialTarget - Math.round(initialTarget)) < 0.05f)
                 ? String.valueOf(Math.round(initialTarget))
@@ -45,8 +62,8 @@ public class SuzControlScreen extends Screen {
         this.percentInput = new EditBox(
                 this.font,
                 left + 16,
-                top + 68,
-                116,
+                top + 108,
+                126,
                 20,
                 Component.literal("Процент")
         );
@@ -58,14 +75,14 @@ public class SuzControlScreen extends Screen {
         this.setInitialFocus(this.percentInput);
 
         this.addRenderableWidget(Button.builder(Component.literal("Применить"), btn -> submitTypedPercent())
-                .bounds(left + 138, top + 68, 82, 20)
+                .bounds(left + 148, top + 108, 92, 20)
                 .build());
 
         int[] presets = new int[]{0, 25, 50, 75, 100};
-        int btnW = 38;
+        int btnW = 41;
         int gap = 4;
         int rowX = left + 16;
-        int rowY = top + 98;
+        int rowY = top + 138;
         for (int i = 0; i < presets.length; i++) {
             int val = presets[i];
             this.addRenderableWidget(Button.builder(Component.literal(val + "%"), btn -> applyPercentAndClose(val))
@@ -74,8 +91,26 @@ public class SuzControlScreen extends Screen {
         }
 
         this.addRenderableWidget(Button.builder(Component.literal("Закрыть"), btn -> this.onClose())
-                .bounds(left + 78, top + 122, 80, 18)
+                .bounds(left + 88, top + 162, 80, 18)
                 .build());
+    }
+
+    private void selectGroup(int group) {
+        this.selectedGroup = group;
+        VverNetwork.CHANNEL.sendToServer(new SuzGroupPacket(this.basePos, group));
+        SuzBlockEntity be = getBlockEntity();
+        if (be != null) {
+            be.setGroup(group);
+        }
+        refreshGroupButtons();
+    }
+
+    private void refreshGroupButtons() {
+        for (int i = 0; i < this.groupButtons.size(); i++) {
+            Button button = this.groupButtons.get(i);
+            button.setMessage(Component.literal(i == this.selectedGroup ? "●" + i : String.valueOf(i)));
+            button.active = i != this.selectedGroup;
+        }
     }
 
     private void submitTypedPercent() {
@@ -145,10 +180,11 @@ public class SuzControlScreen extends Screen {
             g.fill(barX1, barY1, barX1 + fillW, barY1 + barH, 0xFF3CA370);
         }
 
-        g.drawString(this.font, "Подъём стержней (0–100%):", left + 16, top + 56, 0xFFD8E1EA, false);
+        g.drawString(this.font, "Группа СУЗ (0 — не назначена):", left + 16, top + 56, 0xFFD8E1EA, false);
+        g.drawString(this.font, "Подъём стержней (0–100%):", left + 16, top + 94, 0xFFD8E1EA, false);
 
         if (!this.errorText.isEmpty()) {
-            g.drawString(this.font, this.errorText, left + 16, top + 90, 0xFFFF5555, false);
+            g.drawString(this.font, this.errorText, left + 16, top + 130, 0xFFFF5555, false);
         }
 
         super.render(g, mouseX, mouseY, partialTick);
