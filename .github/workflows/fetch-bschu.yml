@@ -107,23 +107,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf ci-output/bschu-input
-          mkdir -p ci-output/bschu-input
-          cp -a out/. ci-output/bschu-input/
+          rm -rf ci-output/bschu-input-v2
+          mkdir -p ci-output/bschu-input-v2
+          cp -a out/. ci-output/bschu-input-v2/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci-output/bschu-input
+          git add ci-output/bschu-input-v2
           if git diff --cached --quiet; then
             echo "No fetched files to publish"
             exit 0
           fi
-          git commit -m "Add fetched BSHU input [skip ci]"
+          git commit -m "Add fetched BSHU input v2 [skip ci]"
           git push origin "HEAD:${{ github.ref_name }}"
 
       - name: Upload fetched files
         uses: actions/upload-artifact@v4
         with:
-          name: bschu-dropmefiles
+          name: bschu-dropmefiles-v2
           path: out/**
           if-no-files-found: error
           retention-days: 3
