@@ -47,6 +47,18 @@
   "item.fly_drone.handheld_siren": "Ручная сирена",
   "block.fly_drone.vver_suz": "СУЗ ВВЭР",
   "block.fly_drone.vver_tvs": "ТВС ВВЭР",
+  "block.fly_drone.vver_bshu": "БЩУ ВВЭР",
+  "tooltip.fly_drone.vver_bshu": "Один блок пульта. Привязка: палочкой по ТВС/СУЗ, затем по БЩУ",
+  "screen.fly_drone.bshu_focus": "Ввод на экране БЩУ",
+  "message.fly_drone.bshu_target_saved": "БЩУ: точка активной зоны сохранена (%s, %s, %s)",
+  "message.fly_drone.bshu_select_target": "БЩУ: сначала нажмите палочкой по ТВС или СУЗ",
+  "message.fly_drone.bshu_already_linked": "БЩУ уже привязан. Отвязки нет: сломайте и поставьте заново",
+  "message.fly_drone.bshu_wrong_dimension": "БЩУ: сохранённая точка находится в другом измерении",
+  "message.fly_drone.bshu_link_failed": "БЩУ: не удалось найти ТВС/СУЗ по сохранённой точке",
+  "message.fly_drone.bshu_linked": "БЩУ привязан: СУЗ %s, ТВС %s",
+  "message.fly_drone.bshu_no_screen_power": "БЩУ: нет питания центрального отдела",
+  "message.fly_drone.bshu_no_rods": "БЩУ: в выбранных группах нет СУЗ",
+  "message.fly_drone.bshu_input_blocked": "БЩУ: ввод заблокирован (нет связи, АЗ-5 или удержание СУЗ)",
   "item.fly_drone.rpg_snar": "Снаряд РПГ-74",
   "item.fly_drone.ci4": "С4"
 }
