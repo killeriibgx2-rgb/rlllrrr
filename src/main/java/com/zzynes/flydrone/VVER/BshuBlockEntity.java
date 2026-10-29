@@ -231,7 +231,9 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
                 nextTvs.add(pos);
             }
         }
-        Comparator<BlockPos> order = Comparator.comparingInt(BlockPos::getY).thenComparingInt(BlockPos::getZ).thenComparingInt(BlockPos::getX);
+        Comparator<BlockPos> order = Comparator.comparingInt((BlockPos pos) -> pos.getY())
+                .thenComparingInt((BlockPos pos) -> pos.getZ())
+                .thenComparingInt((BlockPos pos) -> pos.getX());
         nextSuz.sort(order);
         nextTvs.sort(order);
         if (!nextSuz.equals(this.suzPositions) || !nextTvs.equals(this.tvsPositions)) {

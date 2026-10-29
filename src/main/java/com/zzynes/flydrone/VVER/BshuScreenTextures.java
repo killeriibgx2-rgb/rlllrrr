@@ -99,8 +99,7 @@ public final class BshuScreenTextures {
             ResourceLocation textureId = getTexture(blockEntity, type, partialTick);
             VertexConsumer buffer = buffers.getBuffer(RenderType.entityCutoutNoCull(textureId));
             Vec3 offset = plane.normal().scale(0.0012);
-            Vector3f normal = new Vector3f((float) plane.normal().x, (float) plane.normal().y, (float) plane.normal().z);
-            normal.transform(normalMatrix);
+            Vector3f normal = normalMatrix.transform(new Vector3f((float) plane.normal().x, (float) plane.normal().y, (float) plane.normal().z));
             addVertex(buffer, matrix, plane.bottomLeft().add(offset), 0.0f, 1.0f, normal);
             addVertex(buffer, matrix, plane.bottomRight().add(offset), 1.0f, 1.0f, normal);
             addVertex(buffer, matrix, plane.topRight().add(offset), 1.0f, 0.0f, normal);
