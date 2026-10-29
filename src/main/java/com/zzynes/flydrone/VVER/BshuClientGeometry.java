@@ -208,7 +208,7 @@ public final class BshuClientGeometry {
                 includePoint(points[i], min, max);
             }
             if (screen != null && cubeIndex == 0 && quad.direction() == Direction.NORTH) {
-                addScreenPlane(screen, points);
+                addScreenPlane(screen, points, quad.vertices());
             }
             if (control != null && control.pressable() && cubeIndex == 0 && quad.direction() == Direction.NORTH) {
                 Vec3 normal = points[1].subtract(points[0]).cross(points[3].subtract(points[0]));
@@ -216,8 +216,17 @@ public final class BshuClientGeometry {
                     PRESS_DIRECTIONS.put(boneName, normal.normalize().scale(-1.0));
                 }
             }
-            float[] firstUvs = screen == null ? null : new float[]{0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f};
-            float[] secondUvs = screen == null ? null : new float[]{0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
+            float[][] normalizedUvs = screen == null ? null : normalizedUvs(quad.vertices());
+            float[] firstUvs = normalizedUvs == null ? null : new float[]{
+                    normalizedUvs[0][0], normalizedUvs[0][1],
+                    normalizedUvs[1][0], normalizedUvs[1][1],
+                    normalizedUvs[2][0], normalizedUvs[2][1]
+            };
+            float[] secondUvs = normalizedUvs == null ? null : new float[]{
+                    normalizedUvs[0][0], normalizedUvs[0][1],
+                    normalizedUvs[2][0], normalizedUvs[2][1],
+                    normalizedUvs[3][0], normalizedUvs[3][1]
+            };
             TRIANGLES.add(new Triangle(points[0], points[1], points[2], boneName, control, pair, pairOn, screen, firstUvs));
             TRIANGLES.add(new Triangle(points[0], points[2], points[3], boneName, control, pair, pairOn, screen, secondUvs));
         }
