@@ -30,7 +30,7 @@ public class BshuCoreGroupScreen extends Screen {
         super.init();
         BshuBlockEntity bshu = getBshu();
         SuzBlockEntity suz = getSuz();
-        if (bshu == null || suz == null || !bshu.screensPowered() || !bshu.isLinked()) {
+        if (bshu == null || suz == null || !bshu.isScreenPowered(BshuScreenType.CORE) || !bshu.isLinked()) {
             onClose();
             return;
         }
@@ -46,7 +46,7 @@ public class BshuCoreGroupScreen extends Screen {
             return;
         }
         BshuBlockEntity bshu = getBshu();
-        if (bshu == null || getSuz() == null || !bshu.screensPowered() || !bshu.isLinked()) {
+        if (bshu == null || getSuz() == null || !bshu.isScreenPowered(BshuScreenType.CORE) || !bshu.isLinked()) {
             onClose();
         }
     }

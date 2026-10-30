@@ -9,7 +9,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class VverNetwork {
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(FlyDroneMod.MOD_ID, "vver"),
             () -> PROTOCOL_VERSION,
@@ -53,6 +53,11 @@ public class VverNetwork {
                 .encoder(BshuCoreGroupPacket::encode)
                 .decoder(BshuCoreGroupPacket::decode)
                 .consumerMainThread(BshuCoreGroupPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(BshuScrollPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(BshuScrollPacket::encode)
+                .decoder(BshuScrollPacket::decode)
+                .consumerMainThread(BshuScrollPacket::handle)
                 .add();
     }
 

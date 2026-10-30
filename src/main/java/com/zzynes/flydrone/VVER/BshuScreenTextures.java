@@ -40,6 +40,7 @@ import java.util.Map;
 @OnlyIn(Dist.CLIENT)
 public final class BshuScreenTextures {
     private static final Map<String, Entry> ENTRIES = new HashMap<>();
+    private static final int PARAMETER_LIST_VISIBLE_ROWS = 8;
     private static final Color BG = new Color(7, 17, 24);
     private static final Color PANEL = new Color(13, 27, 38);
     private static final Color PANEL_LIGHT = new Color(20, 40, 55);
@@ -194,7 +195,10 @@ public final class BshuScreenTextures {
         if (type == BshuScreenType.CORE) {
             builder.append('|').append(BshuClientState.getCoreAssignSuzPos(be.getBlockPos())).append('|').append(BshuClientState.getFocusVersion());
         }
-        if (type == BshuScreenType.CORE || type == BshuScreenType.PARAMETERS || type == BshuScreenType.FUEL || type == BshuScreenType.SCHEMATIC) {
+        if (type == BshuScreenType.TERTIARY) {
+            builder.append('|').append(be.getParameterListScroll());
+        }
+        if (type == BshuScreenType.CORE || type == BshuScreenType.TERTIARY || type == BshuScreenType.PARAMETERS || type == BshuScreenType.FUEL || type == BshuScreenType.SCHEMATIC) {
             if (be.getLevel() != null) {
                 for (BlockPos pos : be.getSuzPositions()) {
                     if (be.getLevel().getBlockEntity(pos) instanceof SuzBlockEntity suz) {
@@ -224,7 +228,7 @@ public final class BshuScreenTextures {
         Graphics2D g = image.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        if (!be.screensPowered()) {
+        if (!be.isScreenPowered(type)) {
             g.setColor(new Color(2, 4, 5));
             g.fillRect(0, 0, type.width(), type.height());
             g.setColor(new Color(8, 13, 16));
@@ -240,7 +244,7 @@ public final class BshuScreenTextures {
         switch (type) {
             case CORE -> drawCore(g, be, partialTick);
             case SECONDARY -> drawSecondary(g, be);
-            case TERTIARY -> drawTertiary(g, be);
+            case TERTIARY -> drawParameterList(g, be);
             case SCHEMATIC -> drawSchematic(g, be);
             case FUEL -> drawFuel(g, be);
             case PARAMETERS -> drawParameters(g, be, partialTick);
@@ -332,7 +336,11 @@ public final class BshuScreenTextures {
     }
 
     private static void drawCore(Graphics2D g, BshuBlockEntity be, float partialTick) {
-        header(g, 512, "АКТИВНАЯ ЗОНА", be.isLinked() ? "ВИД СВЕРХУ" : "НЕТ СВЯЗИ");
+        g.setColor(new Color(11, 25, 34));
+        g.fillRect(0, 0, 512, 34);
+        g.setColor(CYAN);
+        g.fillRect(0, 33, 512, 2);
+        centerText(g, "CORE", 256, 23, 17, TEXT, true);
         CoreLayout layout = coreLayout(be);
         if (layout == null) {
             centerText(g, "БЩУ НЕ ПРИВЯЗАН К АКТИВНОЙ ЗОНЕ", 256, 225, 20, AMBER, true);
@@ -373,7 +381,9 @@ public final class BshuScreenTextures {
             }
             drawThermalBars(g, x, y, cell,
                     tvs == null ? VverThermal.AMBIENT_C : tvs.getTemperatureC(),
-                    tvs == null ? 100.0f : tvs.getIntegrityPercent());
+                    tvs == null ? 100.0f : tvs.getIntegrityPercent(),
+                    VverThermal.TVS_NORMAL_C,
+                    VverThermal.TVS_SHELL_MELT_C);
             if (cell >= 34) {
                 centerText(g, "ТВС", x + cell / 2, y + 13, 9, TEXT, true);
                 centerText(g, loaded ? "ЗАГР" : "ПУСТО", x + cell / 2, y + cell - 6, 8, loaded ? MUTED : RED, false);
@@ -395,7 +405,9 @@ public final class BshuScreenTextures {
             g.drawRect(x + 2, y + 2, cell - 5, cell - 5);
             drawThermalBars(g, x, y, cell,
                     suz == null ? VverThermal.AMBIENT_C : suz.getTemperatureC(),
-                    suz == null ? 100.0f : suz.getIntegrityPercent());
+                    suz == null ? 100.0f : suz.getIntegrityPercent(),
+                    VverThermal.SUZ_NORMAL_C,
+                    VverThermal.SUZ_MELT_C);
             if (pos.equals(BshuClientState.getCoreAssignSuzPos(be.getBlockPos()))) {
                 g.setColor(AMBER);
                 g.drawRect(x + 1, y + 1, cell - 3, cell - 3);
@@ -414,7 +426,7 @@ public final class BshuScreenTextures {
         text(g, "N", 498, 58, 14, CYAN, true, true);
     }
 
-    private static void drawThermalBars(Graphics2D g, int x, int y, int cell, float temperatureC, float integrityPercent) {
+    private static void drawThermalBars(Graphics2D g, int x, int y, int cell, float temperatureC, float integrityPercent, float normalC, float meltC) {
         if (cell < 14) {
             return;
         }
@@ -423,7 +435,7 @@ public final class BshuScreenTextures {
         int height = Math.max(4, cell - 10);
         int leftX = x + 4;
         int rightX = x + cell - 4 - barWidth;
-        drawVerticalBar(g, leftX, top, barWidth, height, temperatureFraction(temperatureC), temperatureColor(temperatureC));
+        drawVerticalBar(g, leftX, top, barWidth, height, temperatureFraction(temperatureC), temperatureColor(temperatureC, normalC, meltC));
         drawVerticalBar(g, rightX, top, barWidth, height, VverThermal.clampIntegrity(integrityPercent) / 100.0f, integrityColor(integrityPercent));
     }
 
@@ -445,29 +457,20 @@ public final class BshuScreenTextures {
         if (value <= 600.0f) {
             return value / 600.0f * 0.5f;
         }
-        if (value >= 2000.0f) {
+        if (value >= VverThermal.SCALE_MAX_C) {
             return 1.0f;
         }
-        return 0.5f + (value - 600.0f) / 1400.0f * 0.5f;
+        return 0.5f + (value - 600.0f) / (VverThermal.SCALE_MAX_C - 600.0f) * 0.5f;
     }
 
-    private static Color temperatureColor(float temperatureC) {
-        if (temperatureC < 250.0f) {
-            return new Color(70, 140, 255);
-        }
-        if (temperatureC < 400.0f) {
+    private static Color temperatureColor(float temperatureC, float normalC, float meltC) {
+        if (temperatureC < normalC) {
             return GREEN;
         }
-        if (temperatureC < 600.0f) {
+        if (temperatureC < meltC) {
             return AMBER;
         }
-        if (temperatureC < 900.0f) {
-            return new Color(255, 126, 48);
-        }
-        if (temperatureC < 1200.0f) {
-            return RED;
-        }
-        return new Color(248, 248, 238);
+        return RED;
     }
 
     private static Color integrityColor(float integrityPercent) {
@@ -485,7 +488,7 @@ public final class BshuScreenTextures {
 
     private static void drawSchematic(Graphics2D g, BshuBlockEntity be) {
         header(g, 512, "МНЕМОСХЕМА СВЯЗЕЙ", be.isLinked() ? "СВЯЗЬ ЕСТЬ" : "НЕТ СВЯЗИ");
-        node(g, 18, 62, 104, 58, "БЩУ", "power_2", be.screensPowered());
+        node(g, 18, 62, 104, 58, "БЩУ", "power_2", be.isPowered(2));
         arrow(g, 122, 91, 164, 91, be.isLinked());
         String seed = be.getSeedPos() == null ? "не задан" : be.getSeedPos().getX() + "," + be.getSeedPos().getY() + "," + be.getSeedPos().getZ();
         node(g, 164, 62, 128, 58, "ТОЧКА ВХОДА", seed, be.isLinked());
@@ -597,38 +600,179 @@ public final class BshuScreenTextures {
         text(g, "Обогащение, выгорание и повреждение топлива появятся с топливным циклом", 18, 198, 12, AMBER, false, false);
     }
 
-    private static void drawSecondary(Graphics2D g, BshuBlockEntity be) {
-        header(g, 512, "ВТОРОЙ КОНТУР", "ПАР / ТУРБИНА");
-        int pumps = countToggle(be, BshuToggle.NASOS_1, BshuToggle.NASOS_2, BshuToggle.NASOS_3);
-        int valves = countPairs(be, "a") + countPairs(be, "b") + countPairs(be, "c");
-        node(g, 16, 66, 86, 62, "ПГ", "испарение", be.isLinked());
-        arrow(g, 102, 97, 126, 97, be.getToggle(BshuToggle.TURBINE));
-        node(g, 126, 66, 86, 62, "ПАР", "нет данных", be.getToggle(BshuToggle.TURBINE));
-        arrow(g, 212, 97, 236, 97, be.getToggle(BshuToggle.TURBINE));
-        node(g, 236, 66, 92, 62, "ТУРБИНА", be.getToggle(BshuToggle.TURBINE) ? "ВКЛ" : "ВЫКЛ", be.getToggle(BshuToggle.TURBINE));
-        arrow(g, 328, 97, 352, 97, be.getToggle(BshuToggle.TURBINE));
-        node(g, 352, 66, 64, 62, "ГЕН.", "FE: —", be.getToggle(BshuToggle.TURBINE));
-        arrow(g, 416, 97, 438, 97, pumps > 0);
-        node(g, 438, 66, 58, 62, "КОНД.", "охлажд.", pumps > 0);
-        text(g, "Насосы отдела 1: " + pumps + " / 3", 18, 158, 14, TEXT, true, false);
-        text(g, "Открытые пары A/B/C: " + valves + " / 18", 252, 158, 14, TEXT, true, false);
-        text(g, "Парогенераторы, турбина и генератор как блоки ещё не реализованы", 18, 178, 12, AMBER, false, false);
+    private record ParameterRow(String text, boolean heading) {
     }
 
-    private static void drawTertiary(Graphics2D g, BshuBlockEntity be) {
-        header(g, 512, "ТРЕТИЙ КОНТУР", "ОХЛАЖДЕНИЕ");
+    private static void drawSecondary(Graphics2D g, BshuBlockEntity be) {
+        header(g, 512, "ВТОРОЙ + ТРЕТИЙ КОНТУРЫ", "МНЕМОСХЕМА");
+        int pumps = countToggle(be, BshuToggle.NASOS_1, BshuToggle.NASOS_2, BshuToggle.NASOS_3);
+        int valves = countPairs(be, "a") + countPairs(be, "b") + countPairs(be, "c");
         int vents = countToggle(be, BshuToggle.VENT_1, BshuToggle.VENT_2, BshuToggle.VENT_3, BshuToggle.VENT_4);
         int drains = countToggle(be, BshuToggle.CL_1, BshuToggle.CL_2, BshuToggle.CL_3, BshuToggle.CL_4);
-        node(g, 18, 66, 104, 62, "КОНДЕНСАТОР", "тепло II контура", be.isLinked());
-        arrow(g, 122, 97, 150, 97, vents > 0);
-        node(g, 150, 66, 96, 62, "ВОДА", "расход: —", vents > 0);
-        arrow(g, 246, 97, 274, 97, vents > 0);
-        node(g, 274, 66, 104, 62, "ГРАДИРНЯ", "испарение: —", vents > 0);
-        arrow(g, 378, 97, 406, 97, drains > 0);
-        node(g, 406, 66, 88, 62, "ПОДПИТКА", "объём: —", drains > 0);
-        text(g, "Вентиляция открыта: " + vents + " / 4", 18, 158, 14, TEXT, true, false);
-        text(g, "Слив открыт: " + drains + " / 4", 278, 158, 14, TEXT, true, false);
-        text(g, "Охлаждающая вода, градирня и потери появятся с оборудованием III контура", 18, 178, 12, AMBER, false, false);
+        boolean turbineOn = be.getToggle(BshuToggle.TURBINE);
+        String turbineRpm = turbineOn ? "—" : "0";
+        String generation = turbineOn ? "—" : "0";
+        node(g, 16, 44, 86, 48, "ПГ", "T — · P —", be.isLinked());
+        arrow(g, 102, 68, 126, 68, turbineOn);
+        node(g, 126, 44, 86, 48, "ПАР", "T — · P —", turbineOn);
+        arrow(g, 212, 68, 236, 68, turbineOn);
+        node(g, 236, 44, 92, 48, "ТУРБИНА", turbineRpm + " об/мин", turbineOn);
+        arrow(g, 328, 68, 352, 68, turbineOn);
+        node(g, 352, 44, 64, 48, "ГЕН.", generation + " FE/t", turbineOn);
+        arrow(g, 416, 68, 438, 68, pumps > 0);
+        node(g, 438, 44, 58, 48, "КОНД.", "T — · P —", pumps > 0);
+        node(g, 18, 100, 104, 48, "КОНДЕНСАТОР", "T — · P —", be.isLinked());
+        arrow(g, 122, 124, 150, 124, vents > 0);
+        node(g, 150, 100, 96, 48, "ВОДА", "T — · расх. —", vents > 0);
+        arrow(g, 246, 124, 274, 124, vents > 0);
+        node(g, 274, 100, 104, 48, "ГРАДИРНЯ", "T — · испар. —", vents > 0);
+        arrow(g, 378, 124, 406, 124, drains > 0);
+        node(g, 406, 100, 88, 48, "ПОДПИТКА", "объём: —", drains > 0);
+        text(g, "Турбина: " + turbineRpm + " об/мин · выработка: " + generation + " FE/t", 18, 164, 11, TEXT, true, false);
+        text(g, "Насосы: " + pumps + "/3 · A/B/C: " + valves + "/18 · вентиляция: " + vents + "/4 · слив: " + drains + "/4", 18, 178, 10, MUTED, false, false);
+    }
+
+    public static int getParameterListMaxScroll(BshuBlockEntity be) {
+        return Math.max(0, parameterRows(be).size() - PARAMETER_LIST_VISIBLE_ROWS);
+    }
+
+    private static void drawParameterList(Graphics2D g, BshuBlockEntity be) {
+        List<ParameterRow> rows = parameterRows(be);
+        int maxScroll = Math.max(0, rows.size() - PARAMETER_LIST_VISIBLE_ROWS);
+        int offset = Math.max(0, Math.min(maxScroll, be.getParameterListScroll()));
+        int end = Math.min(rows.size(), offset + PARAMETER_LIST_VISIBLE_ROWS);
+        String range = rows.isEmpty() ? "0 / 0" : (offset + 1) + "–" + end + " / " + rows.size();
+        header(g, 512, "ВСЕ ПАРАМЕТРЫ", range);
+        int y = 52;
+        for (int i = offset; i < end; i++) {
+            ParameterRow row = rows.get(i);
+            if (row.heading()) {
+                text(g, row.text(), 14, y, 12, CYAN, true, false);
+            } else {
+                text(g, trimToWidth(g, row.text(), 474, 11), 14, y, 11, TEXT, false, false);
+            }
+            y += 16;
+        }
+        if (maxScroll > 0) {
+            int trackY = 44;
+            int trackH = 126;
+            int thumbH = Math.max(12, trackH * PARAMETER_LIST_VISIBLE_ROWS / Math.max(1, rows.size()));
+            int thumbY = trackY + (trackH - thumbH) * offset / maxScroll;
+            g.setColor(PANEL);
+            g.fillRect(499, trackY, 4, trackH);
+            g.setColor(CYAN);
+            g.fillRect(499, thumbY, 4, thumbH);
+        }
+    }
+
+    private static List<ParameterRow> parameterRows(BshuBlockEntity be) {
+        List<ParameterRow> rows = new ArrayList<>();
+        rows.add(new ParameterRow("АКТИВНАЯ ЗОНА — ТВС", true));
+        if (!be.isLinked()) {
+            rows.add(new ParameterRow("Связь с активной зоной: нет", false));
+        }
+        if (be.getTvsPositions().isEmpty()) {
+            rows.add(new ParameterRow("ТВС: не обнаружены", false));
+        }
+        float maxTvsTemperature = Float.NEGATIVE_INFINITY;
+        float minTvsIntegrity = Float.POSITIVE_INFINITY;
+        for (int i = 0; i < be.getTvsPositions().size(); i++) {
+            BlockPos pos = be.getTvsPositions().get(i);
+            TvsBlockEntity tvs = be.getLevel() != null && be.getLevel().getBlockEntity(pos) instanceof TvsBlockEntity found ? found : null;
+            if (tvs == null) {
+                rows.add(new ParameterRow("ТВС-" + (i + 1) + " " + positionText(pos) + ": температура — · оболочка — · нет данных", false));
+                continue;
+            }
+            boolean loaded = false;
+            if (be.getLevel() != null) {
+                BlockState state = be.getLevel().getBlockState(pos);
+                loaded = state.is(VverRegistry.TVS_BLOCK.get()) && state.getValue(TvsBlock.HAS_RODS);
+            }
+            maxTvsTemperature = Math.max(maxTvsTemperature, tvs.getTemperatureC());
+            minTvsIntegrity = Math.min(minTvsIntegrity, tvs.getIntegrityPercent());
+            rows.add(new ParameterRow("ТВС-" + (i + 1) + " " + positionText(pos) + ": " + temperatureText(tvs.getTemperatureC()) + " · оболочка " + integrityText(tvs.getIntegrityPercent()) + " · " + (loaded ? "загружена" : "пустая"), false));
+        }
+        if (Float.isFinite(maxTvsTemperature)) {
+            rows.add(new ParameterRow("Макс. температура ТВС: " + temperatureText(maxTvsTemperature) + " · мин. оболочка ТВС: " + integrityText(minTvsIntegrity), false));
+        }
+        rows.add(new ParameterRow("АКТИВНАЯ ЗОНА — СУЗ", true));
+        if (be.getSuzPositions().isEmpty()) {
+            rows.add(new ParameterRow("СУЗ: не обнаружены", false));
+        }
+        float maxSuzTemperature = Float.NEGATIVE_INFINITY;
+        float minSuzIntegrity = Float.POSITIVE_INFINITY;
+        for (int i = 0; i < be.getSuzPositions().size(); i++) {
+            BlockPos pos = be.getSuzPositions().get(i);
+            SuzBlockEntity suz = be.getLevel() != null && be.getLevel().getBlockEntity(pos) instanceof SuzBlockEntity found ? found : null;
+            if (suz == null) {
+                rows.add(new ParameterRow("СУЗ-" + (i + 1) + " " + positionText(pos) + ": температура — · оболочка — · нет данных", false));
+                continue;
+            }
+            maxSuzTemperature = Math.max(maxSuzTemperature, suz.getTemperatureC());
+            minSuzIntegrity = Math.min(minSuzIntegrity, suz.getIntegrityPercent());
+            String group = suz.getGroup() == 0 ? "без группы" : "группа " + suz.getGroup();
+            rows.add(new ParameterRow("СУЗ-" + (i + 1) + " " + positionText(pos) + ": " + temperatureText(suz.getTemperatureC()) + " · оболочка " + integrityText(suz.getIntegrityPercent()) + " · " + group + " · подъём " + Math.round(suz.getCurrentPercent()) + "%", false));
+        }
+        if (Float.isFinite(maxSuzTemperature)) {
+            rows.add(new ParameterRow("Макс. температура СУЗ: " + temperatureText(maxSuzTemperature) + " · мин. оболочка СУЗ: " + integrityText(minSuzIntegrity), false));
+        }
+        rows.add(new ParameterRow("ОБОЛОЧКИ, КОНТУРЫ И ТРУБЫ", true));
+        rows.add(new ParameterRow("Корпус реактора: температура — · прочность оболочки —", false));
+        rows.add(new ParameterRow("Первый контур: температура — · давление — · расход —", false));
+        rows.add(new ParameterRow("Трубы первого контура: температура — · давление — · прочность —", false));
+        for (int i = 0; i < 3; i++) {
+            String strength = be.isGcnPresent(i) ? integrityText(be.getGcnIntegrity(i)) : "—";
+            String presence = be.isGcnPresent(i) ? "есть" : "оборудования нет";
+            rows.add(new ParameterRow("ГЦН-" + (i + 1) + ": " + presence + " · задание " + be.getGcnSpeed(i) + "% · прочность " + strength, false));
+        }
+        rows.add(new ParameterRow("Парогенератор: температура — · давление — · уровень — · прочность —", false));
+        rows.add(new ParameterRow("Второй контур: температура — · давление — · расход —", false));
+        rows.add(new ParameterRow("Трубы второго контура: температура — · давление — · прочность —", false));
+        rows.add(new ParameterRow("Конденсатор: температура — · давление — · прочность —", false));
+        rows.add(new ParameterRow("Третий контур: температура — · давление — · расход —", false));
+        rows.add(new ParameterRow("Градирня: температура — · испарение — · прочность —", false));
+        rows.add(new ParameterRow("Подпитка: объём — · расход —", false));
+        rows.add(new ParameterRow("ТУРБИНА, ГЕНЕРАТОР И СИСТЕМЫ", true));
+        boolean turbineOn = be.getToggle(BshuToggle.TURBINE);
+        rows.add(new ParameterRow("Турбина: " + (turbineOn ? "ВКЛ" : "ВЫКЛ") + " · обороты " + (turbineOn ? "—" : "0") + " об/мин · температура — · прочность —", false));
+        rows.add(new ParameterRow("Генератор: выработка " + (turbineOn ? "—" : "0") + " FE/t", false));
+        rows.add(new ParameterRow("Вентиляция: " + delayedSystemText(be, BshuToggle.VENT_1, BshuToggle.VENT_2, BshuToggle.VENT_3, BshuToggle.VENT_4), false));
+        rows.add(new ParameterRow("Слив: " + delayedSystemText(be, BshuToggle.CL_1, BshuToggle.CL_2, BshuToggle.CL_3, BshuToggle.CL_4, BshuToggle.SUMP_PUMP), false));
+        rows.add(new ParameterRow("Питание отделов: " + powerText(be), false));
+        return rows;
+    }
+
+    private static String positionText(BlockPos pos) {
+        return "[" + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "]";
+    }
+
+    private static String temperatureText(float temperatureC) {
+        return Math.round(temperatureC) + "°C";
+    }
+
+    private static String integrityText(float integrityPercent) {
+        return Math.round(VverThermal.clampIntegrity(integrityPercent)) + "%";
+    }
+
+    private static String delayedSystemText(BshuBlockEntity be, BshuToggle... toggles) {
+        int enabled = 0;
+        boolean starting = false;
+        boolean failed = false;
+        long gameTime = be.getLevel() == null ? 0L : be.getLevel().getGameTime();
+        for (BshuToggle toggle : toggles) {
+            if (!be.getToggle(toggle)) {
+                continue;
+            }
+            enabled++;
+            BshuLampState state = be.getDelayedFailureState(toggle, gameTime);
+            if (state == BshuLampState.RED) {
+                failed = true;
+            } else if (state == BshuLampState.YELLOW) {
+                starting = true;
+            }
+        }
+        String state = failed ? "отказ" : starting ? "запуск" : enabled > 0 ? "включено" : "выключено";
+        return state + " · " + enabled + "/" + toggles.length;
     }
 
     private static void drawErrors(Graphics2D g, BshuBlockEntity be) {

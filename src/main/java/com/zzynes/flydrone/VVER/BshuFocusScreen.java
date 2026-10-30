@@ -99,7 +99,7 @@ public class BshuFocusScreen extends Screen {
             return;
         }
         BshuBlockEntity blockEntity = getBlockEntity();
-        if (blockEntity == null || !blockEntity.screensPowered()) {
+        if (blockEntity == null || !blockEntity.isScreenPowered(this.screenType)) {
             onClose();
             return;
         }
@@ -151,6 +151,29 @@ public class BshuFocusScreen extends Screen {
         return true;
     }
 
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (this.screenType == BshuScreenType.TERTIARY && delta != 0.0) {
+            scrollParameterList(delta > 0.0 ? -3 : 3);
+        }
+        return true;
+    }
+
+    private void scrollParameterList(int deltaLines) {
+        BshuBlockEntity blockEntity = getBlockEntity();
+        if (blockEntity == null) {
+            return;
+        }
+        int maxScroll = BshuScreenTextures.getParameterListMaxScroll(blockEntity);
+        int next = Mth.clamp(blockEntity.getParameterListScroll() + deltaLines, 0, maxScroll);
+        if (next == blockEntity.getParameterListScroll()) {
+            return;
+        }
+        blockEntity.setParameterListScroll(next);
+        VverNetwork.CHANNEL.sendToServer(new BshuScrollPacket(this.blockPos, next));
+        BshuClientState.updateFocusText(String.valueOf(next));
+    }
+
     private BshuClientGeometry.Hit raycastMouse(double mouseX, double mouseY) {
         Minecraft minecraft = Minecraft.getInstance();
         BshuBlockEntity blockEntity = getBlockEntity();
@@ -174,6 +197,22 @@ public class BshuFocusScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             onClose();
+            return true;
+        }
+        if (this.screenType == BshuScreenType.TERTIARY) {
+            if (keyCode == GLFW.GLFW_KEY_DOWN) {
+                scrollParameterList(3);
+            } else if (keyCode == GLFW.GLFW_KEY_UP) {
+                scrollParameterList(-3);
+            } else if (keyCode == GLFW.GLFW_KEY_PAGE_DOWN || keyCode == GLFW.GLFW_KEY_SPACE) {
+                scrollParameterList(8);
+            } else if (keyCode == GLFW.GLFW_KEY_PAGE_UP) {
+                scrollParameterList(-8);
+            } else if (keyCode == GLFW.GLFW_KEY_HOME) {
+                scrollParameterList(-100000);
+            } else if (keyCode == GLFW.GLFW_KEY_END) {
+                scrollParameterList(100000);
+            }
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
@@ -224,6 +263,9 @@ public class BshuFocusScreen extends Screen {
     }
 
     private void applyInput() {
+        if (this.screenType != BshuScreenType.CONTROL && this.screenType != BshuScreenType.GCN) {
+            return;
+        }
         if (this.buffer.isEmpty()) {
             return;
         }
@@ -249,6 +291,9 @@ public class BshuFocusScreen extends Screen {
         if (this.screenType == BshuScreenType.GCN) {
             return String.valueOf(blockEntity.getGcnSpeed(this.field));
         }
+        if (this.screenType == BshuScreenType.TERTIARY) {
+            return String.valueOf(blockEntity.getParameterListScroll());
+        }
         return String.valueOf(blockEntity.getLastRodInput());
     }
 
@@ -256,6 +301,8 @@ public class BshuFocusScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         String hint = this.screenType == BshuScreenType.GCN
                 ? "ГЦН-" + (this.field + 1) + "  •  Enter — применить  •  Esc — выход"
+                : this.screenType == BshuScreenType.TERTIARY
+                ? "ВСЕ ПАРАМЕТРЫ  •  колесо мыши — прокрутка  •  Esc — выход"
                 : "СУЗ  •  Enter — применить и выйти  •  Esc — отмена";
         int textWidth = this.font.width(hint);
         int x = (this.width - textWidth) / 2;

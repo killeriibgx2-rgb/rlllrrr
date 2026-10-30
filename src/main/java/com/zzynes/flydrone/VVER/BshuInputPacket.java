@@ -1,9 +1,7 @@
 package com.zzynes.flydrone.VVER;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -59,20 +57,9 @@ public class BshuInputPacket {
             int value = Mth.clamp(packet.value, 0, 100);
             BshuScreenType screen = BshuScreenType.values()[packet.screenOrdinal];
             if (screen == BshuScreenType.GCN) {
-                if (bshu.applyGcnInput(packet.field, value)) {
-                    player.displayClientMessage(Component.literal(ChatFormatting.GREEN + "ГЦН-" + (packet.field + 1) + ": скорость " + value + "%"), true);
-                } else {
-                    player.displayClientMessage(Component.translatable("message.fly_drone.bshu_no_screen_power").withStyle(ChatFormatting.RED), true);
-                }
+                bshu.applyGcnInput(packet.field, value);
             } else if (screen == BshuScreenType.CONTROL) {
-                int affected = bshu.applyRodInput(value);
-                if (affected > 0) {
-                    player.displayClientMessage(Component.literal(ChatFormatting.GREEN + "СУЗ: " + value + "% (" + affected + " шт.)"), true);
-                } else if (affected == 0) {
-                    player.displayClientMessage(Component.translatable("message.fly_drone.bshu_no_rods").withStyle(ChatFormatting.RED), true);
-                } else {
-                    player.displayClientMessage(Component.translatable("message.fly_drone.bshu_input_blocked").withStyle(ChatFormatting.RED), true);
-                }
+                bshu.applyRodInput(value);
             }
         });
         ctx.get().setPacketHandled(true);
