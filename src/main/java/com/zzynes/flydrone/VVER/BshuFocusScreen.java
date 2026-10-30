@@ -26,8 +26,13 @@ public class BshuFocusScreen extends Screen {
     private Entity cameraMarker;
     private CameraType previousCameraType;
     private Vec3 savedPlayerPos;
+    private float savedPlayerYaw;
+    private float savedPlayerPitch;
+    private float savedPlayerHeadYaw;
+    private float savedPlayerBodyYaw;
     private float cameraYaw;
     private float cameraPitch;
+    private boolean viewSetup;
     private boolean restored;
 
     public BshuFocusScreen(BlockPos blockPos, BshuScreenType screenType, int field) {
@@ -41,7 +46,7 @@ public class BshuFocusScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        if (this.cameraMarker == null) {
+        if (!this.viewSetup) {
             setupCamera();
         }
     }
@@ -49,6 +54,10 @@ public class BshuFocusScreen extends Screen {
     private void setupCamera() {
         Minecraft minecraft = Minecraft.getInstance();
         BshuBlockEntity blockEntity = getBlockEntity();
+        if (this.screenType == BshuScreenType.TERTIARY) {
+            setupFrozenPlayerView(minecraft, blockEntity);
+            return;
+        }
         BshuClientGeometry.ScreenPlane plane = BshuClientGeometry.getScreenPlane(this.screenType);
         if (blockEntity == null || plane == null || minecraft.level == null || minecraft.player == null) {
             onClose();
@@ -87,7 +96,57 @@ public class BshuFocusScreen extends Screen {
         minecraft.levelRenderer.needsUpdate();
         this.buffer = currentValueText(blockEntity);
         this.replaceOnDigit = true;
+        this.viewSetup = true;
         BshuClientState.setFocus(this.blockPos, this.screenType, this.field, this.buffer);
+    }
+
+    private void setupFrozenPlayerView(Minecraft minecraft, BshuBlockEntity blockEntity) {
+        if (blockEntity == null || minecraft.level == null || minecraft.player == null) {
+            onClose();
+            return;
+        }
+        this.savedPlayerPos = minecraft.player.position();
+        this.savedPlayerYaw = minecraft.player.getYRot();
+        this.savedPlayerPitch = minecraft.player.getXRot();
+        this.savedPlayerHeadYaw = minecraft.player.getYHeadRot();
+        this.savedPlayerBodyYaw = minecraft.player.yBodyRot;
+        this.previousCameraType = minecraft.options.getCameraType();
+        this.buffer = currentValueText(blockEntity);
+        this.replaceOnDigit = true;
+        this.viewSetup = true;
+        lockPlayerView(minecraft);
+        BshuClientState.setFocus(this.blockPos, this.screenType, this.field, this.buffer);
+    }
+
+    private boolean usesDetachedCamera() {
+        return this.screenType != BshuScreenType.TERTIARY;
+    }
+
+    private void lockPlayerView(Minecraft minecraft) {
+        if (minecraft.player == null || this.savedPlayerPos == null) {
+            return;
+        }
+        minecraft.player.setDeltaMovement(Vec3.ZERO);
+        minecraft.player.fallDistance = 0.0f;
+        minecraft.player.setPos(this.savedPlayerPos.x, this.savedPlayerPos.y, this.savedPlayerPos.z);
+        minecraft.player.setYRot(this.savedPlayerYaw);
+        minecraft.player.setXRot(this.savedPlayerPitch);
+        minecraft.player.setYHeadRot(this.savedPlayerHeadYaw);
+        minecraft.player.yBodyRot = this.savedPlayerBodyYaw;
+        minecraft.player.yRotO = this.savedPlayerYaw;
+        minecraft.player.xRotO = this.savedPlayerPitch;
+        minecraft.player.yHeadRotO = this.savedPlayerHeadYaw;
+        minecraft.player.yBodyRotO = this.savedPlayerBodyYaw;
+        minecraft.player.setOldPosAndRot();
+        if (this.previousCameraType != null && minecraft.options.getCameraType() != this.previousCameraType) {
+            minecraft.options.setCameraType(this.previousCameraType);
+        }
+        if (minecraft.getCameraEntity() != minecraft.player) {
+            minecraft.setCameraEntity(minecraft.player);
+            if (minecraft.levelRenderer != null) {
+                minecraft.levelRenderer.needsUpdate();
+            }
+        }
     }
 
     @Override
@@ -101,6 +160,10 @@ public class BshuFocusScreen extends Screen {
         BshuBlockEntity blockEntity = getBlockEntity();
         if (blockEntity == null || !blockEntity.isScreenPowered(this.screenType)) {
             onClose();
+            return;
+        }
+        if (!usesDetachedCamera()) {
+            lockPlayerView(minecraft);
             return;
         }
         if (this.savedPlayerPos != null) {
@@ -118,6 +181,10 @@ public class BshuFocusScreen extends Screen {
 
     public void reassertCamera() {
         Minecraft minecraft = Minecraft.getInstance();
+        if (!usesDetachedCamera()) {
+            lockPlayerView(minecraft);
+            return;
+        }
         if (this.cameraMarker != null && minecraft.player != null && minecraft.getCameraEntity() != this.cameraMarker) {
             minecraft.setCameraEntity(this.cameraMarker);
             if (minecraft.levelRenderer != null) {
@@ -325,7 +392,9 @@ public class BshuFocusScreen extends Screen {
         BshuClientState.clearFocus(this.blockPos);
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null) {
-            if (this.savedPlayerPos != null) {
+            if (!usesDetachedCamera()) {
+                lockPlayerView(minecraft);
+            } else if (this.savedPlayerPos != null) {
                 minecraft.player.setDeltaMovement(Vec3.ZERO);
                 minecraft.player.setPos(this.savedPlayerPos.x, this.savedPlayerPos.y, this.savedPlayerPos.z);
             }
