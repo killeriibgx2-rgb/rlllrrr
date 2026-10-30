@@ -56,6 +56,17 @@ public class BshuClientHandler {
             return;
         }
         if (hit.screen() != null) {
+            if (hit.screen() == BshuScreenType.CORE) {
+                if (!bshu.screensPowered()) {
+                    minecraft.player.displayClientMessage(Component.translatable("message.fly_drone.bshu_no_screen_power").withStyle(ChatFormatting.RED), true);
+                } else {
+                    net.minecraft.core.BlockPos suzPos = BshuScreenTextures.findCoreSuzAt(bshu, hit.textureU(), hit.textureV());
+                    if (suzPos != null) {
+                        minecraft.setScreen(new BshuCoreGroupScreen(hit.blockPos(), suzPos));
+                    }
+                }
+                return;
+            }
             if (hit.screen().isInput() && bshu.screensPowered()) {
                 int field = 0;
                 if (hit.screen() == BshuScreenType.GCN) {
@@ -76,7 +87,8 @@ public class BshuClientHandler {
 
     @SubscribeEvent
     public static void onMovementInput(MovementInputUpdateEvent event) {
-        if (!(Minecraft.getInstance().screen instanceof BshuFocusScreen)) {
+        if (!(Minecraft.getInstance().screen instanceof BshuFocusScreen)
+                && !(Minecraft.getInstance().screen instanceof BshuCoreGroupScreen)) {
             return;
         }
         Input input = event.getInput();

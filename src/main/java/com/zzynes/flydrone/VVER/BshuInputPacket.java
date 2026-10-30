@@ -67,7 +67,7 @@ public class BshuInputPacket {
             } else if (screen == BshuScreenType.CONTROL) {
                 int affected = bshu.applyRodInput(value);
                 if (affected > 0) {
-                    player.displayClientMessage(Component.literal(ChatFormatting.GREEN + "СУЗ: " + value + "% для выбранных групп (" + affected + " шт.)"), true);
+                    player.displayClientMessage(Component.literal(ChatFormatting.GREEN + "СУЗ: " + value + "% (" + affected + " шт.)"), true);
                 } else if (affected == 0) {
                     player.displayClientMessage(Component.translatable("message.fly_drone.bshu_no_rods").withStyle(ChatFormatting.RED), true);
                 } else {

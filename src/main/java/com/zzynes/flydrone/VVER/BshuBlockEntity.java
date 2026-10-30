@@ -38,6 +38,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     private final long[] toggleChangedTick = new long[BshuToggle.values().length];
     private final boolean[] rodBanks = new boolean[9];
     private final int[] gcnSpeed = new int[3];
+    private final float[] gcnIntegrity = new float[]{100.0f, 100.0f, 100.0f};
+    private final boolean[] gcnPresent = new boolean[3];
     private final List<BlockPos> suzPositions = new ArrayList<>();
     private final List<BlockPos> tvsPositions = new ArrayList<>();
     private int lastRodInput;
@@ -46,7 +48,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     private int dieselState;
     private long dieselStateTick = -10000L;
     private long lampTestTick = -10000L;
-    private int acknowledgedErrors;
+    private long acknowledgedErrors;
     private boolean linked;
     @Nullable
     private BlockPos seedPos;
@@ -78,7 +80,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         entity.errorCheckCooldown--;
         if (entity.errorCheckCooldown <= 0) {
             entity.errorCheckCooldown = 10;
-            int pruned = entity.acknowledgedErrors & entity.computeActiveErrorMask();
+            long pruned = entity.acknowledgedErrors & entity.computeActiveErrorMask();
             if (pruned != entity.acknowledgedErrors) {
                 entity.acknowledgedErrors = pruned;
                 entity.sync();
@@ -127,6 +129,39 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
 
     public int getGcnSpeed(int index) {
         return index >= 0 && index < this.gcnSpeed.length ? this.gcnSpeed[index] : 0;
+    }
+
+    public float getGcnIntegrity(int index) {
+        return index >= 0 && index < this.gcnIntegrity.length ? this.gcnIntegrity[index] : 100.0f;
+    }
+
+    public boolean isGcnPresent(int index) {
+        return index >= 0 && index < this.gcnPresent.length && this.gcnPresent[index];
+    }
+
+    public int getGcnStrengthSeverity() {
+        boolean anyPresent = false;
+        float minimum = 100.0f;
+        for (int i = 0; i < this.gcnPresent.length; i++) {
+            if (this.gcnPresent[i]) {
+                anyPresent = true;
+                minimum = Math.min(minimum, this.gcnIntegrity[i]);
+            }
+        }
+        if (!anyPresent) {
+            return 2;
+        }
+        if (minimum <= VverThermal.GCN_CRITICAL_INTEGRITY_PERCENT) {
+            return 2;
+        }
+        return minimum <= VverThermal.GCN_WARNING_INTEGRITY_PERCENT ? 1 : 0;
+    }
+
+    public boolean isErrorCritical(BshuError error) {
+        if (error == BshuError.GCN_STRENGTH) {
+            return getGcnStrengthSeverity() != 1;
+        }
+        return error != null && error.critical();
     }
 
     public int getLastRodInput() {
@@ -398,11 +433,13 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         scanCore();
         int clamped = Mth.clamp(value, 0, 100);
         int affected = 0;
+        boolean allSelected = allRodBanksSelected();
         for (BlockPos pos : this.suzPositions) {
             if (!this.level.isLoaded(pos)) {
                 continue;
             }
-            if (this.level.getBlockEntity(pos) instanceof SuzBlockEntity suz && suz.getGroup() >= 1 && this.rodBanks[suz.getGroup()]) {
+            if (this.level.getBlockEntity(pos) instanceof SuzBlockEntity suz
+                    && (allSelected || (suz.getGroup() >= 1 && this.rodBanks[suz.getGroup()]))) {
                 suz.setTargetPercent(clamped);
                 affected++;
             }
@@ -414,8 +451,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         return affected;
     }
 
-    public int computeActiveErrorMask() {
-        int mask = 0;
+    public long computeActiveErrorMask() {
+        long mask = 0L;
         if (!isPowered(1)) {
             mask |= BshuError.POWER_1.bit();
         }
@@ -434,6 +471,16 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         if (this.dieselState == 3) {
             mask |= BshuError.DG_FAILED.bit();
         }
+        if (getGcnStrengthSeverity() > 0) {
+            mask |= BshuError.GCN_STRENGTH.bit();
+        }
+        long gameTime = this.level == null ? 0L : this.level.getGameTime();
+        if (hasDelayedFailure(gameTime, BshuToggle.VENT_1, BshuToggle.VENT_2, BshuToggle.VENT_3, BshuToggle.VENT_4)) {
+            mask |= BshuError.VENT_FAILURE.bit();
+        }
+        if (hasDelayedFailure(gameTime, BshuToggle.CL_1, BshuToggle.CL_2, BshuToggle.CL_3, BshuToggle.CL_4, BshuToggle.SUMP_PUMP)) {
+            mask |= BshuError.DRAIN_FAILURE.bit();
+        }
         if (!this.linked || this.seedPos == null) {
             mask |= BshuError.NO_LINK.bit();
             return mask;
@@ -444,31 +491,56 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         if (this.suzPositions.isEmpty() && this.tvsPositions.isEmpty()) {
             mask |= BshuError.LINK_LOST.bit();
         }
-        boolean selectedGroupHasRod = false;
+        boolean allSelected = allRodBanksSelected();
+        boolean selectedHasRod = false;
         if (this.level != null) {
             for (BlockPos pos : this.suzPositions) {
                 if (!this.level.isLoaded(pos)) {
                     continue;
                 }
                 if (this.level.getBlockEntity(pos) instanceof SuzBlockEntity suz) {
-                    if (suz.getGroup() == 0) {
-                        mask |= BshuError.ROD_UNGROUPED.bit();
-                    } else if (this.rodBanks[suz.getGroup()]) {
-                        selectedGroupHasRod = true;
+                    if (allSelected || (suz.getGroup() >= 1 && this.rodBanks[suz.getGroup()])) {
+                        selectedHasRod = true;
+                    }
+                    if (suz.getTemperatureC() >= VverThermal.SUZ_DAMAGE_C) {
+                        mask |= BshuError.SUZ_OVERHEAT.bit();
+                    }
+                    if (suz.getTemperatureC() >= VverThermal.SUZ_CRITICAL_C || VverThermal.isCriticalIntegrity(suz.getIntegrityPercent())) {
+                        mask |= BshuError.SUZ_STRENGTH_CRITICAL.bit();
+                    }
+                    if (suz.isStuck()) {
+                        mask |= BshuError.SUZ_STUCK.bit();
                     }
                 }
             }
             for (BlockPos pos : this.tvsPositions) {
-                if (this.level.isLoaded(pos)) {
-                    BlockState state = this.level.getBlockState(pos);
-                    if (state.is(VverRegistry.TVS_BLOCK.get()) && !state.getValue(TvsBlock.HAS_RODS)) {
-                        mask |= BshuError.TVS_EMPTY.bit();
-                        break;
+                if (!this.level.isLoaded(pos)) {
+                    continue;
+                }
+                BlockState state = this.level.getBlockState(pos);
+                if (state.is(VverRegistry.TVS_BLOCK.get()) && !state.getValue(TvsBlock.HAS_RODS)) {
+                    mask |= BshuError.TVS_EMPTY.bit();
+                }
+                if (this.level.getBlockEntity(pos) instanceof TvsBlockEntity tvs) {
+                    if (tvs.getTemperatureC() >= VverThermal.TVS_DAMAGE_C) {
+                        mask |= BshuError.ROD_OVERHEAT.bit();
+                    }
+                    if (tvs.getTemperatureC() >= VverThermal.TVS_CRITICAL_C || VverThermal.isCriticalIntegrity(tvs.getIntegrityPercent())) {
+                        mask |= BshuError.ROD_STRENGTH_CRITICAL.bit();
+                    }
+                    if (tvs.isShellMelted()) {
+                        mask |= BshuError.MELTDOWN.bit();
+                    }
+                    if (state.is(VverRegistry.TVS_BLOCK.get()) && state.getValue(TvsBlock.HAS_RODS) && tvs.getTemperatureC() >= VverThermal.TVS_FAST_DAMAGE_C) {
+                        mask |= BshuError.HYDROGEN.bit();
+                    }
+                    if (tvs.getIntegrityPercent() <= 50.0f) {
+                        mask |= BshuError.ACTIVITY_RELEASE.bit();
                     }
                 }
             }
         }
-        if (!this.suzPositions.isEmpty() && !selectedGroupHasRod) {
+        if (!this.suzPositions.isEmpty() && !selectedHasRod) {
             mask |= BshuError.NO_BANK.bit();
         }
         if (!getToggle(BshuToggle.GCN_1) && !getToggle(BshuToggle.GCN_2) && !getToggle(BshuToggle.GCN_3)) {
@@ -477,12 +549,21 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         return mask;
     }
 
-    public int getAcknowledgedErrorMask() {
+    public boolean hasDelayedFailure(long gameTime, BshuToggle... toggles) {
+        for (BshuToggle toggle : toggles) {
+            if (getDelayedFailureState(toggle, gameTime) == BshuLampState.RED) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public long getAcknowledgedErrorMask() {
         return this.acknowledgedErrors;
     }
 
     public boolean hasUnacknowledgedErrors() {
-        return (computeActiveErrorMask() & ~this.acknowledgedErrors) != 0;
+        return (computeActiveErrorMask() & ~this.acknowledgedErrors) != 0L;
     }
 
     public BshuLampState getLampState(String lampName, long gameTime) {
@@ -570,6 +651,10 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
 
     public boolean isKvitirLit(long gameTime) {
         return isPowered(2) && hasUnacknowledgedErrors() && (gameTime / 10L) % 2L == 0L;
+    }
+
+    public BshuLampState getDelayedFailureState(BshuToggle toggle, long gameTime) {
+        return delayedFailureState(toggle, gameTime);
     }
 
     private BshuLampState delayedFailureState(BshuToggle toggle, long gameTime) {
@@ -706,13 +791,23 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         tag.putLongArray("ToggleTicks", Arrays.copyOf(this.toggleChangedTick, this.toggleChangedTick.length));
         tag.putInt("RodMask", rodMask);
         tag.putIntArray("GcnSpeed", Arrays.copyOf(this.gcnSpeed, this.gcnSpeed.length));
+        int[] gcnIntegrityValues = new int[this.gcnIntegrity.length];
+        int gcnPresentMask = 0;
+        for (int i = 0; i < this.gcnIntegrity.length; i++) {
+            gcnIntegrityValues[i] = Math.round(this.gcnIntegrity[i]);
+            if (this.gcnPresent[i]) {
+                gcnPresentMask |= 1 << i;
+            }
+        }
+        tag.putIntArray("GcnIntegrity", gcnIntegrityValues);
+        tag.putInt("GcnPresentMask", gcnPresentMask);
         tag.putInt("LastRodInput", this.lastRodInput);
         tag.putBoolean("Alarm", this.alarmActive);
         tag.putBoolean("Az5", this.az5Active);
         tag.putInt("DieselState", this.dieselState);
         tag.putLong("DieselTick", this.dieselStateTick);
         tag.putLong("LampTestTick", this.lampTestTick);
-        tag.putInt("AcknowledgedErrors", this.acknowledgedErrors);
+        tag.putLong("AcknowledgedErrors", this.acknowledgedErrors);
         tag.putBoolean("Linked", this.linked);
         if (this.seedPos != null) {
             tag.putLong("SeedPos", this.seedPos.asLong());
@@ -743,13 +838,22 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         for (int i = 0; i < this.gcnSpeed.length; i++) {
             this.gcnSpeed[i] = Mth.clamp(this.gcnSpeed[i], 0, 100);
         }
+        int[] gcnIntegrityValues = tag.getIntArray("GcnIntegrity");
+        Arrays.fill(this.gcnIntegrity, 100.0f);
+        for (int i = 0; i < Math.min(gcnIntegrityValues.length, this.gcnIntegrity.length); i++) {
+            this.gcnIntegrity[i] = VverThermal.clampIntegrity(gcnIntegrityValues[i]);
+        }
+        int gcnPresentMask = tag.getInt("GcnPresentMask");
+        for (int i = 0; i < this.gcnPresent.length; i++) {
+            this.gcnPresent[i] = (gcnPresentMask & (1 << i)) != 0;
+        }
         this.lastRodInput = Mth.clamp(tag.getInt("LastRodInput"), 0, 100);
         this.alarmActive = tag.getBoolean("Alarm");
         this.az5Active = tag.getBoolean("Az5");
         this.dieselState = Mth.clamp(tag.getInt("DieselState"), 0, 3);
         this.dieselStateTick = tag.getLong("DieselTick");
         this.lampTestTick = tag.contains("LampTestTick") ? tag.getLong("LampTestTick") : -10000L;
-        this.acknowledgedErrors = tag.getInt("AcknowledgedErrors");
+        this.acknowledgedErrors = tag.getLong("AcknowledgedErrors");
         this.linked = tag.getBoolean("Linked");
         this.seedPos = tag.contains("SeedPos") ? BlockPos.of(tag.getLong("SeedPos")) : null;
         this.suzPositions.clear();

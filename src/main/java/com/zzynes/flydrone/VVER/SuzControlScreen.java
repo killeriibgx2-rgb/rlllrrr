@@ -44,12 +44,12 @@ public class SuzControlScreen extends Screen {
             this.selectedGroup = be.getGroup();
         }
 
-        int groupButtonW = 22;
+        int groupButtonW = 25;
         int groupGap = 3;
-        for (int i = 0; i <= 8; i++) {
+        for (int i = 1; i <= 8; i++) {
             int group = i;
             Button button = this.addRenderableWidget(Button.builder(Component.literal(String.valueOf(i)), btn -> selectGroup(group))
-                    .bounds(left + 16 + i * (groupButtonW + groupGap), top + 68, groupButtonW, 18)
+                    .bounds(left + 16 + (i - 1) * (groupButtonW + groupGap), top + 68, groupButtonW, 18)
                     .build());
             this.groupButtons.add(button);
         }
@@ -96,20 +96,21 @@ public class SuzControlScreen extends Screen {
     }
 
     private void selectGroup(int group) {
-        this.selectedGroup = group;
-        VverNetwork.CHANNEL.sendToServer(new SuzGroupPacket(this.basePos, group));
+        this.selectedGroup = this.selectedGroup == group ? 0 : group;
+        VverNetwork.CHANNEL.sendToServer(new SuzGroupPacket(this.basePos, this.selectedGroup));
         SuzBlockEntity be = getBlockEntity();
         if (be != null) {
-            be.setGroup(group);
+            be.setGroup(this.selectedGroup);
         }
         refreshGroupButtons();
     }
 
     private void refreshGroupButtons() {
         for (int i = 0; i < this.groupButtons.size(); i++) {
+            int group = i + 1;
             Button button = this.groupButtons.get(i);
-            button.setMessage(Component.literal(i == this.selectedGroup ? "●" + i : String.valueOf(i)));
-            button.active = i != this.selectedGroup;
+            button.setMessage(Component.literal(group == this.selectedGroup ? "●" + group : String.valueOf(group)));
+            button.active = true;
         }
     }
 
@@ -180,7 +181,7 @@ public class SuzControlScreen extends Screen {
             g.fill(barX1, barY1, barX1 + fillW, barY1 + barH, 0xFF3CA370);
         }
 
-        g.drawString(this.font, "Группа СУЗ (0 — не назначена):", left + 16, top + 56, 0xFFD8E1EA, false);
+        g.drawString(this.font, "Группа СУЗ (повторно — снять):", left + 16, top + 56, 0xFFD8E1EA, false);
         g.drawString(this.font, "Подъём стержней (0–100%):", left + 16, top + 94, 0xFFD8E1EA, false);
 
         if (!this.errorText.isEmpty()) {
