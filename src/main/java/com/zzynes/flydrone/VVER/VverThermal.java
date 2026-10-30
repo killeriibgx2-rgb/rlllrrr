@@ -4,12 +4,15 @@ import net.minecraft.util.Mth;
 
 public final class VverThermal {
     public static final float AMBIENT_C = 20.0f;
+    public static final float SCALE_MAX_C = 2000.0f;
+    public static final float TVS_NORMAL_C = 300.0f;
     public static final float TVS_DAMAGE_C = 750.0f;
     public static final float TVS_FAST_DAMAGE_C = 1000.0f;
     public static final float TVS_ACCIDENT_C = 1200.0f;
     public static final float TVS_CRITICAL_C = 1600.0f;
     public static final float TVS_SHELL_MELT_C = 1850.0f;
     public static final float TVS_FUEL_MELT_C = 2850.0f;
+    public static final float SUZ_NORMAL_C = 290.0f;
     public static final float SUZ_DAMAGE_C = 700.0f;
     public static final float SUZ_FAST_DAMAGE_C = 1000.0f;
     public static final float SUZ_CRITICAL_C = 1100.0f;

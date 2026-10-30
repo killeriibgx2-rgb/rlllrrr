@@ -1,9 +1,7 @@
 package com.zzynes.flydrone.VVER;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -43,7 +41,7 @@ public class BshuCoreGroupPacket {
                 return;
             }
             BlockEntity bshuBe = player.serverLevel().getBlockEntity(packet.bshuPos);
-            if (!(bshuBe instanceof BshuBlockEntity bshu) || !bshu.screensPowered() || !bshu.isLinked()) {
+            if (!(bshuBe instanceof BshuBlockEntity bshu) || !bshu.isScreenPowered(BshuScreenType.CORE) || !bshu.isLinked()) {
                 return;
             }
             bshu.scanCore();
@@ -54,8 +52,6 @@ public class BshuCoreGroupPacket {
             if (suzBe instanceof SuzBlockEntity suz) {
                 int group = Mth.clamp(packet.group, 0, 8);
                 suz.setGroup(group);
-                String text = group == 0 ? "СУЗ: группа не назначена" : "СУЗ: назначена группа " + group;
-                player.displayClientMessage(Component.literal(ChatFormatting.GREEN + text), true);
             }
         });
         ctx.get().setPacketHandled(true);

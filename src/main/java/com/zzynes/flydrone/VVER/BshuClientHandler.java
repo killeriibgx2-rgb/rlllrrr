@@ -2,10 +2,8 @@ package com.zzynes.flydrone.VVER;
 
 import com.zzynes.flydrone.DRONE.FlyDroneMod;
 import com.zzynes.flydrone.DRONE.FpvOverlay;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -57,9 +55,7 @@ public class BshuClientHandler {
         }
         if (hit.screen() != null) {
             if (hit.screen() == BshuScreenType.CORE) {
-                if (!bshu.screensPowered()) {
-                    minecraft.player.displayClientMessage(Component.translatable("message.fly_drone.bshu_no_screen_power").withStyle(ChatFormatting.RED), true);
-                } else {
+                if (bshu.isScreenPowered(hit.screen())) {
                     net.minecraft.core.BlockPos suzPos = BshuScreenTextures.findCoreSuzAt(bshu, hit.textureU(), hit.textureV());
                     if (suzPos != null) {
                         minecraft.setScreen(new BshuCoreGroupScreen(hit.blockPos(), suzPos));
@@ -67,14 +63,12 @@ public class BshuClientHandler {
                 }
                 return;
             }
-            if (hit.screen().isInput() && bshu.screensPowered()) {
+            if (hit.screen().isInput() && bshu.isScreenPowered(hit.screen())) {
                 int field = 0;
                 if (hit.screen() == BshuScreenType.GCN) {
                     field = hit.textureV() < 0.34f ? 0 : hit.textureV() < 0.67f ? 1 : 2;
                 }
                 minecraft.setScreen(new BshuFocusScreen(hit.blockPos(), hit.screen(), field));
-            } else if (hit.screen().isInput()) {
-                minecraft.player.displayClientMessage(Component.translatable("message.fly_drone.bshu_no_screen_power").withStyle(ChatFormatting.RED), true);
             }
             return;
         }

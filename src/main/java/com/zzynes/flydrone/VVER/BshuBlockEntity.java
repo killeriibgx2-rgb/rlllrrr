@@ -43,6 +43,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     private final List<BlockPos> suzPositions = new ArrayList<>();
     private final List<BlockPos> tvsPositions = new ArrayList<>();
     private int lastRodInput;
+    private int parameterListScroll;
     private boolean alarmActive;
     private boolean az5Active;
     private int dieselState;
@@ -102,8 +103,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         return department >= 1 && department <= 3 && this.power[department];
     }
 
-    public boolean screensPowered() {
-        return isPowered(2);
+    public boolean isScreenPowered(BshuScreenType screen) {
+        return screen != null && isPowered(screen.department());
     }
 
     public boolean getToggle(BshuToggle toggle) {
@@ -166,6 +167,22 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
 
     public int getLastRodInput() {
         return this.lastRodInput;
+    }
+
+    public int getParameterListScroll() {
+        return this.parameterListScroll;
+    }
+
+    public void setParameterListScroll(int scroll) {
+        int clamped = Mth.clamp(scroll, 0, 100000);
+        if (this.parameterListScroll == clamped) {
+            return;
+        }
+        this.parameterListScroll = clamped;
+        this.setChanged();
+        if (this.level instanceof ServerLevel) {
+            sync();
+        }
     }
 
     public boolean isAlarmActive() {
@@ -418,7 +435,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     }
 
     public boolean applyGcnInput(int field, int value) {
-        if (this.level == null || this.level.isClientSide || !screensPowered() || field < 0 || field >= this.gcnSpeed.length) {
+        if (this.level == null || this.level.isClientSide || !isScreenPowered(BshuScreenType.GCN) || field < 0 || field >= this.gcnSpeed.length) {
             return false;
         }
         this.gcnSpeed[field] = Mth.clamp(value, 0, 100);
@@ -427,7 +444,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     }
 
     public int applyRodInput(int value) {
-        if (this.level == null || this.level.isClientSide || !screensPowered() || !this.linked || this.az5Active || getToggle(BshuToggle.ROD_HOLD)) {
+        if (this.level == null || this.level.isClientSide || !isScreenPowered(BshuScreenType.CONTROL) || !this.linked || this.az5Active || getToggle(BshuToggle.ROD_HOLD)) {
             return -1;
         }
         scanCore();
@@ -528,7 +545,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
                     if (tvs.getTemperatureC() >= VverThermal.TVS_CRITICAL_C || VverThermal.isCriticalIntegrity(tvs.getIntegrityPercent())) {
                         mask |= BshuError.ROD_STRENGTH_CRITICAL.bit();
                     }
-                    if (tvs.isShellMelted()) {
+                    if (tvs.isShellMelted() && tvs.getIntegrityPercent() <= 0.0f) {
                         mask |= BshuError.MELTDOWN.bit();
                     }
                     if (state.is(VverRegistry.TVS_BLOCK.get()) && state.getValue(TvsBlock.HAS_RODS) && tvs.getTemperatureC() >= VverThermal.TVS_FAST_DAMAGE_C) {
@@ -802,6 +819,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         tag.putIntArray("GcnIntegrity", gcnIntegrityValues);
         tag.putInt("GcnPresentMask", gcnPresentMask);
         tag.putInt("LastRodInput", this.lastRodInput);
+        tag.putInt("ParameterListScroll", this.parameterListScroll);
         tag.putBoolean("Alarm", this.alarmActive);
         tag.putBoolean("Az5", this.az5Active);
         tag.putInt("DieselState", this.dieselState);
@@ -848,6 +866,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
             this.gcnPresent[i] = (gcnPresentMask & (1 << i)) != 0;
         }
         this.lastRodInput = Mth.clamp(tag.getInt("LastRodInput"), 0, 100);
+        this.parameterListScroll = Mth.clamp(tag.getInt("ParameterListScroll"), 0, 100000);
         this.alarmActive = tag.getBoolean("Alarm");
         this.az5Active = tag.getBoolean("Az5");
         this.dieselState = Mth.clamp(tag.getInt("DieselState"), 0, 3);
