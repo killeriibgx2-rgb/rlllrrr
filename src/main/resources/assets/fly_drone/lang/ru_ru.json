@@ -50,6 +50,8 @@
   "block.fly_drone.vver_bshu": "БЩУ ВВЭР",
   "tooltip.fly_drone.vver_bshu": "Один блок пульта. Привязка: палочкой по ТВС/СУЗ, затем по БЩУ",
   "screen.fly_drone.bshu_focus": "Ввод на экране БЩУ",
+  "screen.fly_drone.bshu_core_group": "Назначение группы СУЗ",
+  "message.fly_drone.bshu_press_group_digit": "НАЖМИТЕ ЦИФРУ ОТ 0-8",
   "message.fly_drone.bshu_target_saved": "БЩУ: точка активной зоны сохранена (%s, %s, %s)",
   "message.fly_drone.bshu_select_target": "БЩУ: сначала нажмите палочкой по ТВС или СУЗ",
   "message.fly_drone.bshu_already_linked": "БЩУ уже привязан. Отвязки нет: сломайте и поставьте заново",

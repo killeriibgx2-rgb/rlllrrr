@@ -27,18 +27,25 @@ public class SuzBlockEntity extends BlockEntity {
     private float prevPercent = 0.0f;
     private float velocityPercent = 0.0f;
     private int group = 0;
+    private float temperatureC = VverThermal.AMBIENT_C;
+    private float integrityPercent = 100.0f;
+    private int stuckTicks;
+    private int thermalSyncCooldown;
 
     public SuzBlockEntity(BlockPos pos, BlockState state) {
         super(VverRegistry.SUZ_BLOCK_ENTITY.get(), pos, state);
     }
 
     public static void tick(Level level, BlockPos pos, BlockState state, SuzBlockEntity entity) {
+        entity.tickThermal();
         entity.prevPercent = entity.currentPercent;
+        float beforeMove = entity.currentPercent;
         float diff = entity.targetPercent - entity.currentPercent;
         float dist = Math.abs(diff);
         if (dist <= 0.001f) {
             entity.currentPercent = entity.targetPercent;
             entity.velocityPercent = 0.0f;
+            entity.updateStuck(beforeMove);
             return;
         }
         float sign = diff > 0.0f ? 1.0f : -1.0f;
@@ -56,6 +63,7 @@ public class SuzBlockEntity extends BlockEntity {
         } else {
             entity.currentPercent = Mth.clamp(entity.currentPercent + entity.velocityPercent, 0.0f, 100.0f);
         }
+        entity.updateStuck(beforeMove);
     }
 
     public void setTargetPercent(float percent) {
@@ -97,6 +105,76 @@ public class SuzBlockEntity extends BlockEntity {
         }
         this.group = clamped;
         this.setChanged();
+        sync();
+    }
+
+    public float getTemperatureC() {
+        return this.temperatureC;
+    }
+
+    public void setTemperatureC(float temperatureC) {
+        float clamped = VverThermal.clampTemperature(temperatureC);
+        if (Math.abs(this.temperatureC - clamped) < 0.01f) {
+            return;
+        }
+        this.temperatureC = clamped;
+        this.setChanged();
+        sync();
+    }
+
+    public float getIntegrityPercent() {
+        return this.integrityPercent;
+    }
+
+    public void damageIntegrity(float amountPercent) {
+        if (amountPercent <= 0.0f) {
+            return;
+        }
+        float next = VverThermal.clampIntegrity(this.integrityPercent - amountPercent);
+        if (Math.abs(next - this.integrityPercent) < 0.001f) {
+            return;
+        }
+        this.integrityPercent = next;
+        this.setChanged();
+        sync();
+    }
+
+    public boolean isMelted() {
+        return this.temperatureC >= VverThermal.SUZ_MELT_C;
+    }
+
+    public boolean isStuck() {
+        return this.stuckTicks >= 100;
+    }
+
+    private void tickThermal() {
+        if (this.level == null || this.level.isClientSide) {
+            return;
+        }
+        float next = VverThermal.applyDamagePerTick(this.integrityPercent, this.temperatureC, VverThermal.SUZ_DAMAGE_C, VverThermal.SUZ_MELT_C);
+        if (Math.abs(next - this.integrityPercent) < 0.001f) {
+            return;
+        }
+        this.integrityPercent = next;
+        this.setChanged();
+        if (this.thermalSyncCooldown-- <= 0) {
+            this.thermalSyncCooldown = 20;
+            sync();
+        }
+    }
+
+    private void updateStuck(float beforeMove) {
+        if (this.level == null || this.level.isClientSide) {
+            return;
+        }
+        if (Math.abs(this.targetPercent - this.currentPercent) > 0.5f && Math.abs(this.currentPercent - beforeMove) <= 0.0001f) {
+            this.stuckTicks++;
+        } else {
+            this.stuckTicks = 0;
+        }
+    }
+
+    private void sync() {
         if (this.level != null && !this.level.isClientSide) {
             this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
         }
@@ -120,6 +198,8 @@ public class SuzBlockEntity extends BlockEntity {
         tag.putFloat("TargetPercent", this.targetPercent);
         tag.putFloat("CurrentPercent", this.currentPercent);
         tag.putInt("Group", this.group);
+        tag.putFloat("TemperatureC", this.temperatureC);
+        tag.putFloat("IntegrityPercent", this.integrityPercent);
     }
 
     @Override
@@ -128,6 +208,8 @@ public class SuzBlockEntity extends BlockEntity {
         boolean wasEmpty = this.level == null;
         this.targetPercent = Mth.clamp(tag.getFloat("TargetPercent"), 0.0f, 100.0f);
         this.group = Mth.clamp(tag.getInt("Group"), 0, 8);
+        this.temperatureC = tag.contains("TemperatureC") ? VverThermal.clampTemperature(tag.getFloat("TemperatureC")) : VverThermal.AMBIENT_C;
+        this.integrityPercent = tag.contains("IntegrityPercent") ? VverThermal.clampIntegrity(tag.getFloat("IntegrityPercent")) : 100.0f;
         if (wasEmpty) {
             float savedCurrent = tag.contains("CurrentPercent") ? tag.getFloat("CurrentPercent") : this.targetPercent;
             this.currentPercent = Mth.clamp(savedCurrent, 0.0f, 100.0f);
@@ -144,6 +226,8 @@ public class SuzBlockEntity extends BlockEntity {
         tag.putFloat("TargetPercent", this.targetPercent);
         tag.putFloat("CurrentPercent", this.currentPercent);
         tag.putInt("Group", this.group);
+        tag.putFloat("TemperatureC", this.temperatureC);
+        tag.putFloat("IntegrityPercent", this.integrityPercent);
         return tag;
     }
 
@@ -154,6 +238,8 @@ public class SuzBlockEntity extends BlockEntity {
         this.prevPercent = this.currentPercent;
         this.velocityPercent = 0.0f;
         this.group = Mth.clamp(tag.getInt("Group"), 0, 8);
+        this.temperatureC = tag.contains("TemperatureC") ? VverThermal.clampTemperature(tag.getFloat("TemperatureC")) : VverThermal.AMBIENT_C;
+        this.integrityPercent = tag.contains("IntegrityPercent") ? VverThermal.clampIntegrity(tag.getFloat("IntegrityPercent")) : 100.0f;
     }
 
     @Nullable
@@ -168,6 +254,8 @@ public class SuzBlockEntity extends BlockEntity {
         if (tag != null) {
             this.targetPercent = Mth.clamp(tag.getFloat("TargetPercent"), 0.0f, 100.0f);
             this.group = Mth.clamp(tag.getInt("Group"), 0, 8);
+            this.temperatureC = tag.contains("TemperatureC") ? VverThermal.clampTemperature(tag.getFloat("TemperatureC")) : VverThermal.AMBIENT_C;
+            this.integrityPercent = tag.contains("IntegrityPercent") ? VverThermal.clampIntegrity(tag.getFloat("IntegrityPercent")) : 100.0f;
         }
     }
 }

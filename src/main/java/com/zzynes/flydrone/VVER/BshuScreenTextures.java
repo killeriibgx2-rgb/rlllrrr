@@ -184,11 +184,22 @@ public final class BshuScreenTextures {
         if (type == BshuScreenType.ERRORS) {
             builder.append('|').append((gameTime / 10L) % 2L);
         }
+        if (type == BshuScreenType.SCHEMATIC) {
+            for (BshuToggle toggle : new BshuToggle[]{BshuToggle.CL_1, BshuToggle.CL_2, BshuToggle.CL_3, BshuToggle.CL_4,
+                    BshuToggle.VENT_1, BshuToggle.VENT_2, BshuToggle.VENT_3, BshuToggle.VENT_4, BshuToggle.SUMP_PUMP}) {
+                BshuLampState state = be.getDelayedFailureState(toggle, gameTime);
+                builder.append(state == BshuLampState.RED ? '2' : state == BshuLampState.YELLOW ? '1' : '0');
+            }
+        }
+        if (type == BshuScreenType.CORE) {
+            builder.append('|').append(BshuClientState.getCoreAssignSuzPos(be.getBlockPos())).append('|').append(BshuClientState.getFocusVersion());
+        }
         if (type == BshuScreenType.CORE || type == BshuScreenType.PARAMETERS || type == BshuScreenType.FUEL || type == BshuScreenType.SCHEMATIC) {
             if (be.getLevel() != null) {
                 for (BlockPos pos : be.getSuzPositions()) {
                     if (be.getLevel().getBlockEntity(pos) instanceof SuzBlockEntity suz) {
-                        builder.append('|').append(Math.round(suz.getCurrentPercent())).append(':').append(Math.round(suz.getTargetPercent())).append(':').append(suz.getGroup());
+                        builder.append('|').append(Math.round(suz.getCurrentPercent())).append(':').append(Math.round(suz.getTargetPercent())).append(':').append(suz.getGroup())
+                                .append(':').append(Math.round(suz.getTemperatureC())).append(':').append(Math.round(suz.getIntegrityPercent()));
                     }
                 }
                 for (BlockPos pos : be.getTvsPositions()) {
@@ -196,7 +207,8 @@ public final class BshuScreenTextures {
                     builder.append('|').append(state.is(VverRegistry.TVS_BLOCK.get()) && state.getValue(TvsBlock.HAS_RODS));
                     if (be.getLevel().getBlockEntity(pos) instanceof TvsBlockEntity tvs) {
                         ItemStack stack = tvs.itemHandler.getStackInSlot(0);
-                        builder.append(':').append(stack.isEmpty() ? "-" : stack.getHoverName().getString());
+                        builder.append(':').append(stack.isEmpty() ? "-" : stack.getHoverName().getString())
+                                .append(':').append(Math.round(tvs.getTemperatureC())).append(':').append(Math.round(tvs.getIntegrityPercent()));
                     }
                 }
             }
@@ -263,15 +275,15 @@ public final class BshuScreenTextures {
         }
     }
 
-    private static void drawCore(Graphics2D g, BshuBlockEntity be, float partialTick) {
-        header(g, 512, "АКТИВНАЯ ЗОНА", be.isLinked() ? "ВИД СВЕРХУ" : "НЕТ СВЯЗИ");
+    private record CoreLayout(int minX, int minZ, int cols, int rows, int cell, int startX, int startY) {
+    }
+
+    private static CoreLayout coreLayout(BshuBlockEntity be) {
         List<BlockPos> all = new ArrayList<>();
         all.addAll(be.getSuzPositions());
         all.addAll(be.getTvsPositions());
         if (all.isEmpty()) {
-            centerText(g, "БЩУ НЕ ПРИВЯЗАН К АКТИВНОЙ ЗОНЕ", 256, 225, 20, AMBER, true);
-            centerText(g, "Палочка: ТВС/СУЗ → БЩУ", 256, 255, 15, MUTED, false);
-            return;
+            return null;
         }
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
@@ -288,13 +300,61 @@ public final class BshuScreenTextures {
         int cell = Math.max(10, Math.min(54, Math.min(452 / cols, 392 / rows)));
         int startX = (512 - cols * cell) / 2;
         int startY = 52 + (392 - rows * cell) / 2;
+        return new CoreLayout(minX, minZ, cols, rows, cell, startX, startY);
+    }
+
+    public static BlockPos findCoreSuzAt(BshuBlockEntity be, float textureU, float textureV) {
+        CoreLayout layout = coreLayout(be);
+        if (layout == null || textureU < 0.0f || textureU > 1.0f || textureV < 0.0f || textureV > 1.0f) {
+            return null;
+        }
+        int pixelX = Math.round(textureU * BshuScreenType.CORE.width());
+        int pixelY = Math.round(textureV * BshuScreenType.CORE.height());
+        int col = Math.floorDiv(pixelX - layout.startX(), layout.cell());
+        int row = Math.floorDiv(pixelY - layout.startY(), layout.cell());
+        if (col < 0 || col >= layout.cols() || row < 0 || row >= layout.rows()) {
+            return null;
+        }
+        int localX = pixelX - (layout.startX() + col * layout.cell());
+        int localY = pixelY - (layout.startY() + row * layout.cell());
+        if (localX < 2 || localX >= layout.cell() - 2 || localY < 2 || localY >= layout.cell() - 2) {
+            return null;
+        }
+        int worldX = layout.minX() + col;
+        int worldZ = layout.minZ() + row;
+        BlockPos found = null;
+        for (BlockPos pos : be.getSuzPositions()) {
+            if (pos.getX() == worldX && pos.getZ() == worldZ) {
+                found = pos;
+            }
+        }
+        return found;
+    }
+
+    private static void drawCore(Graphics2D g, BshuBlockEntity be, float partialTick) {
+        header(g, 512, "АКТИВНАЯ ЗОНА", be.isLinked() ? "ВИД СВЕРХУ" : "НЕТ СВЯЗИ");
+        CoreLayout layout = coreLayout(be);
+        if (layout == null) {
+            centerText(g, "БЩУ НЕ ПРИВЯЗАН К АКТИВНОЙ ЗОНЕ", 256, 225, 20, AMBER, true);
+            centerText(g, "Палочка: ТВС/СУЗ → БЩУ", 256, 255, 15, MUTED, false);
+            return;
+        }
+        int minX = layout.minX();
+        int minZ = layout.minZ();
+        int cell = layout.cell();
+        int startX = layout.startX();
+        int startY = layout.startY();
         for (BlockPos pos : be.getTvsPositions()) {
             int x = startX + (pos.getX() - minX) * cell;
             int y = startY + (pos.getZ() - minZ) * cell;
             boolean loaded = false;
+            TvsBlockEntity tvs = null;
             if (be.getLevel() != null) {
                 BlockState state = be.getLevel().getBlockState(pos);
                 loaded = state.is(VverRegistry.TVS_BLOCK.get()) && state.getValue(TvsBlock.HAS_RODS);
+                if (be.getLevel().getBlockEntity(pos) instanceof TvsBlockEntity foundTvs) {
+                    tvs = foundTvs;
+                }
             }
             g.setColor(loaded ? new Color(22, 55, 78) : new Color(42, 35, 35));
             g.fillRect(x + 2, y + 2, cell - 4, cell - 4);
@@ -311,6 +371,9 @@ public final class BshuScreenTextures {
                     }
                 }
             }
+            drawThermalBars(g, x, y, cell,
+                    tvs == null ? VverThermal.AMBIENT_C : tvs.getTemperatureC(),
+                    tvs == null ? 100.0f : tvs.getIntegrityPercent());
             if (cell >= 34) {
                 centerText(g, "ТВС", x + cell / 2, y + 13, 9, TEXT, true);
                 centerText(g, loaded ? "ЗАГР" : "ПУСТО", x + cell / 2, y + cell - 6, 8, loaded ? MUTED : RED, false);
@@ -326,10 +389,19 @@ public final class BshuScreenTextures {
             g.setColor(new Color(24, 31, 38));
             g.fillRect(x + 2, y + 2, cell - 4, cell - 4);
             int fillHeight = Math.round((cell - 6) * percent / 100.0f);
-            g.setColor(group == 0 ? new Color(80, 45, 45) : darken(color, 0.55f));
+            g.setColor(darken(color, 0.55f));
             g.fillRect(x + 3, y + cell - 3 - fillHeight, cell - 6, fillHeight);
-            g.setColor(group == 0 ? RED : color);
+            g.setColor(color);
             g.drawRect(x + 2, y + 2, cell - 5, cell - 5);
+            drawThermalBars(g, x, y, cell,
+                    suz == null ? VverThermal.AMBIENT_C : suz.getTemperatureC(),
+                    suz == null ? 100.0f : suz.getIntegrityPercent());
+            if (pos.equals(BshuClientState.getCoreAssignSuzPos(be.getBlockPos()))) {
+                g.setColor(AMBER);
+                g.drawRect(x + 1, y + 1, cell - 3, cell - 3);
+                g.setColor(TEXT);
+                g.drawRect(x, y, cell - 1, cell - 1);
+            }
             if (cell >= 30) {
                 centerText(g, group == 0 ? "СУЗ —" : "Г" + group, x + cell / 2, y + 13, 9, TEXT, true);
                 centerText(g, Math.round(percent) + "%", x + cell / 2, y + cell - 6, 10, TEXT, true);
@@ -340,6 +412,75 @@ public final class BshuScreenTextures {
         text(g, "ТВС: " + be.getTvsPositions().size() + "   СУЗ: " + be.getSuzPositions().size(), 14, 478, 14, TEXT, true, false);
         text(g, selectedGroupsText(be), 498, 478, 13, MUTED, false, true);
         text(g, "N", 498, 58, 14, CYAN, true, true);
+    }
+
+    private static void drawThermalBars(Graphics2D g, int x, int y, int cell, float temperatureC, float integrityPercent) {
+        if (cell < 14) {
+            return;
+        }
+        int barWidth = cell >= 40 ? 4 : cell >= 24 ? 3 : 2;
+        int top = y + 5;
+        int height = Math.max(4, cell - 10);
+        int leftX = x + 4;
+        int rightX = x + cell - 4 - barWidth;
+        drawVerticalBar(g, leftX, top, barWidth, height, temperatureFraction(temperatureC), temperatureColor(temperatureC));
+        drawVerticalBar(g, rightX, top, barWidth, height, VverThermal.clampIntegrity(integrityPercent) / 100.0f, integrityColor(integrityPercent));
+    }
+
+    private static void drawVerticalBar(Graphics2D g, int x, int y, int width, int height, float fraction, Color color) {
+        float clamped = Math.max(0.0f, Math.min(1.0f, fraction));
+        g.setColor(new Color(5, 10, 14, 210));
+        g.fillRect(x, y, width, height);
+        int fill = clamped <= 0.0f ? 0 : Math.max(1, Math.round(height * clamped));
+        if (fill > 0) {
+            g.setColor(color);
+            g.fillRect(x, y + height - fill, width, fill);
+        }
+        g.setColor(new Color(120, 145, 160, 220));
+        g.drawRect(x, y, Math.max(0, width - 1), Math.max(0, height - 1));
+    }
+
+    private static float temperatureFraction(float temperatureC) {
+        float value = Math.max(0.0f, temperatureC);
+        if (value <= 600.0f) {
+            return value / 600.0f * 0.5f;
+        }
+        if (value >= 2000.0f) {
+            return 1.0f;
+        }
+        return 0.5f + (value - 600.0f) / 1400.0f * 0.5f;
+    }
+
+    private static Color temperatureColor(float temperatureC) {
+        if (temperatureC < 250.0f) {
+            return new Color(70, 140, 255);
+        }
+        if (temperatureC < 400.0f) {
+            return GREEN;
+        }
+        if (temperatureC < 600.0f) {
+            return AMBER;
+        }
+        if (temperatureC < 900.0f) {
+            return new Color(255, 126, 48);
+        }
+        if (temperatureC < 1200.0f) {
+            return RED;
+        }
+        return new Color(248, 248, 238);
+    }
+
+    private static Color integrityColor(float integrityPercent) {
+        if (integrityPercent >= 70.0f) {
+            return GREEN;
+        }
+        if (integrityPercent >= 40.0f) {
+            return AMBER;
+        }
+        if (integrityPercent > VverThermal.CRITICAL_INTEGRITY_PERCENT) {
+            return new Color(255, 126, 48);
+        }
+        return RED;
     }
 
     private static void drawSchematic(Graphics2D g, BshuBlockEntity be) {
@@ -357,7 +498,13 @@ public final class BshuScreenTextures {
             int x = 18 + (i % 7) * 69;
             int y = 164 + (i / 7) * 34;
             boolean on = be.getToggle(toggles[i]);
-            pill(g, x, y, 62, 24, labels[i], on);
+            int status = on ? 1 : 0;
+            if (on && isDelayedFailureToggle(toggles[i])) {
+                long gameTime = be.getLevel() == null ? 0L : be.getLevel().getGameTime();
+                BshuLampState state = be.getDelayedFailureState(toggles[i], gameTime);
+                status = state == BshuLampState.RED ? 3 : state == BshuLampState.YELLOW ? 2 : 1;
+            }
+            pillStatus(g, x, y, 62, 24, labels[i], status);
         }
         text(g, "Трубные графы и оборудование контуров — следующий этап", 18, 240, 12, MUTED, false, false);
     }
@@ -486,36 +633,37 @@ public final class BshuScreenTextures {
 
     private static void drawErrors(Graphics2D g, BshuBlockEntity be) {
         header(g, 512, "ТАБЛО ОШИБОК", be.hasUnacknowledgedErrors() ? "ТРЕБУЕТСЯ КВИТИРОВАНИЕ" : "КОНТРОЛЬ");
-        int active = be.computeActiveErrorMask();
-        int acknowledged = be.getAcknowledgedErrorMask();
+        long active = be.computeActiveErrorMask();
+        long acknowledged = be.getAcknowledgedErrorMask();
         long time = be.getLevel() == null ? 0L : be.getLevel().getGameTime();
         boolean phase = (time / 10L) % 2L == 0L;
         BshuError[] errors = BshuError.values();
-        int cols = 4;
-        int tileW = 118;
-        int tileH = 38;
+        int cols = 6;
+        int tileW = 79;
+        int tileH = 27;
         for (int i = 0; i < errors.length; i++) {
-            int x = 12 + (i % cols) * (tileW + 6);
-            int y = 48 + (i / cols) * (tileH + 7);
-            boolean isActive = (active & errors[i].bit()) != 0;
-            boolean isAck = (acknowledged & errors[i].bit()) != 0;
+            int x = 9 + (i % cols) * (tileW + 4);
+            int y = 41 + (i / cols) * (tileH + 3);
+            boolean isActive = (active & errors[i].bit()) != 0L;
+            boolean isAck = (acknowledged & errors[i].bit()) != 0L;
+            boolean critical = be.isErrorCritical(errors[i]);
             Color fill = new Color(12, 21, 28);
             Color border = new Color(35, 55, 68);
             Color label = new Color(91, 112, 126);
             if (isActive && (!isAck && !phase)) {
                 fill = new Color(39, 24, 24);
             } else if (isActive) {
-                fill = errors[i].critical() ? new Color(125, 29, 29) : new Color(122, 83, 18);
-                border = errors[i].critical() ? RED : AMBER;
+                fill = critical ? new Color(125, 29, 29) : new Color(122, 83, 18);
+                border = critical ? RED : AMBER;
                 label = TEXT;
             }
             g.setColor(fill);
             g.fillRect(x, y, tileW, tileH);
             g.setColor(border);
             g.drawRect(x, y, tileW - 1, tileH - 1);
-            drawWrappedCenter(g, errors[i].label(), x + tileW / 2, y + tileH / 2, tileW - 10, 11, label);
+            drawWrappedCenter(g, errors[i].label(), x + tileW / 2, y + tileH / 2, tileW - 6, 8, label);
         }
-        text(g, "Мигание = не квитировано · ровный свет = подтверждено кнопкой KVITIR", 14, 198, 12, MUTED, false, false);
+        text(g, "Мигание = не квитировано · ровный свет = подтверждено кнопкой KVITIR", 10, 201, 9, MUTED, false, false);
     }
 
     private static void drawControl(Graphics2D g, BshuBlockEntity be) {
@@ -606,6 +754,9 @@ public final class BshuScreenTextures {
     }
 
     private static String selectedGroupsText(BshuBlockEntity be) {
+        if (be.allRodBanksSelected()) {
+            return "группы: ВСЕ";
+        }
         List<String> groups = new ArrayList<>();
         for (int i = 1; i <= 8; i++) {
             if (be.isRodBankSelected(i)) {
@@ -629,11 +780,34 @@ public final class BshuScreenTextures {
     }
 
     private static void pill(Graphics2D g, int x, int y, int w, int h, String label, boolean active) {
-        g.setColor(active ? new Color(20, 70, 45) : new Color(14, 25, 33));
+        pillStatus(g, x, y, w, h, label, active ? 1 : 0);
+    }
+
+    private static void pillStatus(Graphics2D g, int x, int y, int w, int h, String label, int status) {
+        Color fill = switch (status) {
+            case 1 -> new Color(20, 70, 45);
+            case 2 -> new Color(105, 77, 16);
+            case 3 -> new Color(105, 25, 25);
+            default -> new Color(14, 25, 33);
+        };
+        Color border = switch (status) {
+            case 1 -> GREEN;
+            case 2 -> AMBER;
+            case 3 -> RED;
+            default -> GRID;
+        };
+        g.setColor(fill);
         g.fillRect(x, y, w, h);
-        g.setColor(active ? GREEN : GRID);
+        g.setColor(border);
         g.drawRect(x, y, w - 1, h - 1);
-        centerText(g, label, x + w / 2, y + 16, 11, active ? TEXT : MUTED, true);
+        centerText(g, label, x + w / 2, y + 16, 11, status == 0 ? MUTED : TEXT, true);
+    }
+
+    private static boolean isDelayedFailureToggle(BshuToggle toggle) {
+        return switch (toggle) {
+            case CL_1, CL_2, CL_3, CL_4, VENT_1, VENT_2, VENT_3, VENT_4, SUMP_PUMP -> true;
+            default -> false;
+        };
     }
 
     private static void arrow(Graphics2D g, int x1, int y, int x2, int y2, boolean active) {

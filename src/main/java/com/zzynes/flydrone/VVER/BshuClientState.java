@@ -27,6 +27,8 @@ public final class BshuClientState {
     private static int focusField;
     private static String focusText = "";
     private static long focusVersion;
+    private static BlockPos coreAssignBshuPos;
+    private static BlockPos coreAssignSuzPos;
 
     private BshuClientState() {
     }
@@ -113,6 +115,24 @@ public final class BshuClientState {
 
     public static long getFocusVersion() {
         return focusVersion;
+    }
+
+    public static void setCoreAssignment(BlockPos bshuPos, BlockPos suzPos) {
+        coreAssignBshuPos = bshuPos;
+        coreAssignSuzPos = suzPos;
+        focusVersion++;
+    }
+
+    public static void clearCoreAssignment(BlockPos bshuPos) {
+        if (coreAssignBshuPos != null && coreAssignBshuPos.equals(bshuPos)) {
+            coreAssignBshuPos = null;
+            coreAssignSuzPos = null;
+            focusVersion++;
+        }
+    }
+
+    public static BlockPos getCoreAssignSuzPos(BlockPos bshuPos) {
+        return coreAssignBshuPos != null && coreAssignBshuPos.equals(bshuPos) ? coreAssignSuzPos : null;
     }
 
     public static BshuClientGeometry.Hit findLookHit(Minecraft minecraft) {
