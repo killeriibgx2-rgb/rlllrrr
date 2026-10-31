@@ -56,6 +56,9 @@ public class VverRegistry {
     public static final RegistryObject<Block> BSHU_BLOCK =
             BLOCKS.register("vver_bshu", BshuBlock::new);
 
+    public static final RegistryObject<Block> BSHU_PART_BLOCK =
+            BLOCKS.register("vver_bshu_part", BshuPartBlock::new);
+
     public static final RegistryObject<Item> BSHU_ITEM =
             ITEMS.register("vver_bshu", () -> new BshuBlockItem(BSHU_BLOCK.get()));
 

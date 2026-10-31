@@ -48,6 +48,7 @@
   "block.fly_drone.vver_suz": "СУЗ ВВЭР",
   "block.fly_drone.vver_tvs": "ТВС ВВЭР",
   "block.fly_drone.vver_bshu": "БЩУ ВВЭР",
+  "block.fly_drone.vver_bshu_part": "БЩУ ВВЭР",
   "tooltip.fly_drone.vver_bshu": "Один блок пульта. Привязка: палочкой по ТВС/СУЗ, затем по БЩУ",
   "screen.fly_drone.bshu_focus": "Ввод на экране БЩУ",
   "screen.fly_drone.bshu_core_group": "Назначение группы СУЗ",
