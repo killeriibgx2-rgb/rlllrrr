@@ -717,8 +717,13 @@ public final class BshuScreenTextures {
             rows.add(new ParameterRow("Макс. температура СУЗ: " + temperatureText(maxSuzTemperature) + " · мин. оболочка СУЗ: " + integrityText(minSuzIntegrity), false));
         }
         rows.add(new ParameterRow("ОБОЛОЧКИ, КОНТУРЫ И ТРУБЫ", true));
-        rows.add(new ParameterRow("Корпус реактора: температура — · прочность оболочки —", false));
-        rows.add(new ParameterRow("Первый контур: температура — · давление — · расход —", false));
+        if (be.isVesselPresent()) {
+            rows.add(new ParameterRow("Корпус реактора: " + (be.isVesselSealed() ? "герметичен" : "не герметичен") + " · прочность обшивки " + be.getVesselIntegrityPercent() + "% · объём " + be.getVesselCapacityM3() + " м³", false));
+            rows.add(new ParameterRow("Первый контур: температура " + be.getVesselTemperatureC() + "°C · давление " + pressureText(be.getVesselPressureAtm()) + " атм · предел " + pressureText(be.getVesselPressureLimitAtm()) + " атм · вода " + be.getVesselCoolantM3() + "/" + be.getVesselCapacityM3() + " м³ · подушка " + be.getVesselGasPercent() + "% · расход —", false));
+        } else {
+            rows.add(new ParameterRow("Корпус реактора: не обнаружен · прочность обшивки —", false));
+            rows.add(new ParameterRow("Первый контур: температура — · давление — · расход —", false));
+        }
         rows.add(new ParameterRow("Трубы первого контура: температура — · давление — · прочность —", false));
         for (int i = 0; i < 3; i++) {
             String strength = be.isGcnPresent(i) ? integrityText(be.getGcnIntegrity(i)) : "—";
@@ -748,6 +753,10 @@ public final class BshuScreenTextures {
 
     private static String temperatureText(float temperatureC) {
         return Math.round(temperatureC) + "°C";
+    }
+
+    private static String pressureText(double pressureAtm) {
+        return String.format(java.util.Locale.ROOT, "%.1f", pressureAtm);
     }
 
     private static String integrityText(float integrityPercent) {

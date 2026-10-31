@@ -55,6 +55,17 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     private BlockPos seedPos;
     private int rescanCooldown;
     private int errorCheckCooldown;
+    private boolean vesselPresent;
+    private boolean vesselSealed;
+    private boolean vesselLeaking;
+    private boolean vesselCoreCovered = true;
+    private int vesselPressureTenths = 10;
+    private int vesselTemperatureC = 20;
+    private int vesselCoolantM3;
+    private int vesselCapacityM3;
+    private int vesselGasPercent;
+    private int vesselIntegrityPercent = 100;
+    private int vesselPressureLimitTenths = 700;
 
     public BshuBlockEntity(BlockPos pos, BlockState state) {
         super(VverRegistry.BSHU_BLOCK_ENTITY.get(), pos, state);
@@ -81,6 +92,9 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         entity.errorCheckCooldown--;
         if (entity.errorCheckCooldown <= 0) {
             entity.errorCheckCooldown = 10;
+            if (entity.linked && entity.updateVesselState(entity.suzPositions, entity.tvsPositions)) {
+                entity.sync();
+            }
             long pruned = entity.acknowledgedErrors & entity.computeActiveErrorMask();
             if (pruned != entity.acknowledgedErrors) {
                 entity.acknowledgedErrors = pruned;
@@ -201,6 +215,50 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         return this.linked;
     }
 
+    public boolean isVesselPresent() {
+        return this.vesselPresent;
+    }
+
+    public boolean isVesselSealed() {
+        return this.vesselSealed;
+    }
+
+    public boolean isVesselLeaking() {
+        return this.vesselLeaking;
+    }
+
+    public boolean isVesselCoreCovered() {
+        return this.vesselCoreCovered;
+    }
+
+    public double getVesselPressureAtm() {
+        return this.vesselPressureTenths / 10.0;
+    }
+
+    public double getVesselPressureLimitAtm() {
+        return this.vesselPressureLimitTenths / 10.0;
+    }
+
+    public int getVesselTemperatureC() {
+        return this.vesselTemperatureC;
+    }
+
+    public int getVesselCoolantM3() {
+        return this.vesselCoolantM3;
+    }
+
+    public int getVesselCapacityM3() {
+        return this.vesselCapacityM3;
+    }
+
+    public int getVesselGasPercent() {
+        return this.vesselGasPercent;
+    }
+
+    public int getVesselIntegrityPercent() {
+        return this.vesselIntegrityPercent;
+    }
+
     @Nullable
     public BlockPos getSeedPos() {
         return this.seedPos;
@@ -239,7 +297,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         }
         BlockPos seed = componentBase(this.level, this.seedPos);
         if (seed == null) {
-            if (!this.suzPositions.isEmpty() || !this.tvsPositions.isEmpty()) {
+            boolean vesselChanged = clearVesselState();
+            if (!this.suzPositions.isEmpty() || !this.tvsPositions.isEmpty() || vesselChanged) {
                 this.suzPositions.clear();
                 this.tvsPositions.clear();
                 sync();
@@ -288,13 +347,87 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
                 .thenComparingInt((BlockPos pos) -> pos.getX());
         nextSuz.sort(order);
         nextTvs.sort(order);
-        if (!nextSuz.equals(this.suzPositions) || !nextTvs.equals(this.tvsPositions)) {
+        boolean vesselChanged = updateVesselState(nextSuz, nextTvs);
+        if (!nextSuz.equals(this.suzPositions) || !nextTvs.equals(this.tvsPositions) || vesselChanged) {
             this.suzPositions.clear();
             this.suzPositions.addAll(nextSuz);
             this.tvsPositions.clear();
             this.tvsPositions.addAll(nextTvs);
             sync();
         }
+    }
+
+    private boolean updateVesselState(List<BlockPos> suz, List<BlockPos> tvs) {
+        if (!(this.level instanceof ServerLevel serverLevel) || (suz.isEmpty() && tvs.isEmpty())) {
+            return clearVesselState();
+        }
+        List<BlockPos> bases = new ArrayList<>(suz.size() + tvs.size());
+        bases.addAll(suz);
+        bases.addAll(tvs);
+        ReactorVesselData.Vessel vessel = ReactorVesselData.get(serverLevel).refreshForCore(serverLevel, bases);
+        if (vessel == null) {
+            return clearVesselState();
+        }
+        boolean present = true;
+        boolean sealed = vessel.sealed();
+        boolean leaking = vessel.leaking();
+        boolean covered = vessel.coreCovered();
+        int pressure = (int) Math.round(vessel.pressure() * 10.0);
+        int temperature = (int) Math.round(vessel.temperature());
+        int coolant = (int) Math.round(vessel.coolant());
+        int capacity = (int) Math.round(vessel.capacity());
+        int gas = (int) Math.round(vessel.gasPercent());
+        int integrity = (int) Math.round(vessel.integrity());
+        int limit = (int) Math.round(vessel.pressureLimit() * 10.0);
+        boolean changed = this.vesselPresent != present
+                || this.vesselSealed != sealed
+                || this.vesselLeaking != leaking
+                || this.vesselCoreCovered != covered
+                || this.vesselPressureTenths != pressure
+                || this.vesselTemperatureC != temperature
+                || this.vesselCoolantM3 != coolant
+                || this.vesselCapacityM3 != capacity
+                || this.vesselGasPercent != gas
+                || this.vesselIntegrityPercent != integrity
+                || this.vesselPressureLimitTenths != limit;
+        this.vesselPresent = present;
+        this.vesselSealed = sealed;
+        this.vesselLeaking = leaking;
+        this.vesselCoreCovered = covered;
+        this.vesselPressureTenths = pressure;
+        this.vesselTemperatureC = temperature;
+        this.vesselCoolantM3 = coolant;
+        this.vesselCapacityM3 = capacity;
+        this.vesselGasPercent = gas;
+        this.vesselIntegrityPercent = integrity;
+        this.vesselPressureLimitTenths = limit;
+        return changed;
+    }
+
+    private boolean clearVesselState() {
+        boolean changed = this.vesselPresent
+                || this.vesselSealed
+                || this.vesselLeaking
+                || !this.vesselCoreCovered
+                || this.vesselPressureTenths != 10
+                || this.vesselTemperatureC != 20
+                || this.vesselCoolantM3 != 0
+                || this.vesselCapacityM3 != 0
+                || this.vesselGasPercent != 0
+                || this.vesselIntegrityPercent != 100
+                || this.vesselPressureLimitTenths != 700;
+        this.vesselPresent = false;
+        this.vesselSealed = false;
+        this.vesselLeaking = false;
+        this.vesselCoreCovered = true;
+        this.vesselPressureTenths = 10;
+        this.vesselTemperatureC = 20;
+        this.vesselCoolantM3 = 0;
+        this.vesselCapacityM3 = 0;
+        this.vesselGasPercent = 0;
+        this.vesselIntegrityPercent = 100;
+        this.vesselPressureLimitTenths = 700;
+        return changed;
     }
 
     @Nullable
@@ -556,6 +689,18 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
                     }
                 }
             }
+        }
+        if (this.vesselPresent && !this.vesselSealed) {
+            mask |= BshuError.HULL_NOT_SEALED.bit();
+        }
+        if (this.vesselPresent && (this.vesselLeaking || (this.vesselCoolantM3 > 0 && !this.vesselCoreCovered))) {
+            mask |= BshuError.COOLANT_LOSS.bit();
+        }
+        if (this.vesselPresent && this.vesselPressureTenths >= Math.max(650, this.vesselPressureLimitTenths - 50)) {
+            mask |= BshuError.HIGH_PRESSURE.bit();
+        }
+        if (this.vesselPresent && this.vesselIntegrityPercent <= 75) {
+            mask |= BshuError.VESSEL_STRENGTH.bit();
         }
         if (!this.suzPositions.isEmpty() && !selectedHasRod) {
             mask |= BshuError.NO_BANK.bit();
@@ -832,6 +977,17 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         }
         tag.putLongArray("SuzPositions", this.suzPositions.stream().mapToLong(BlockPos::asLong).toArray());
         tag.putLongArray("TvsPositions", this.tvsPositions.stream().mapToLong(BlockPos::asLong).toArray());
+        tag.putBoolean("VesselPresent", this.vesselPresent);
+        tag.putBoolean("VesselSealed", this.vesselSealed);
+        tag.putBoolean("VesselLeaking", this.vesselLeaking);
+        tag.putBoolean("VesselCoreCovered", this.vesselCoreCovered);
+        tag.putInt("VesselPressureTenths", this.vesselPressureTenths);
+        tag.putInt("VesselTemperatureC", this.vesselTemperatureC);
+        tag.putInt("VesselCoolantM3", this.vesselCoolantM3);
+        tag.putInt("VesselCapacityM3", this.vesselCapacityM3);
+        tag.putInt("VesselGasPercent", this.vesselGasPercent);
+        tag.putInt("VesselIntegrityPercent", this.vesselIntegrityPercent);
+        tag.putInt("VesselPressureLimitTenths", this.vesselPressureLimitTenths);
     }
 
     private void readState(CompoundTag tag) {
@@ -883,5 +1039,16 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         for (long value : tag.getLongArray("TvsPositions")) {
             this.tvsPositions.add(BlockPos.of(value));
         }
+        this.vesselPresent = tag.getBoolean("VesselPresent");
+        this.vesselSealed = tag.getBoolean("VesselSealed");
+        this.vesselLeaking = tag.getBoolean("VesselLeaking");
+        this.vesselCoreCovered = !tag.contains("VesselCoreCovered") || tag.getBoolean("VesselCoreCovered");
+        this.vesselPressureTenths = Mth.clamp(tag.contains("VesselPressureTenths") ? tag.getInt("VesselPressureTenths") : 10, 0, 2500);
+        this.vesselTemperatureC = Mth.clamp(tag.contains("VesselTemperatureC") ? tag.getInt("VesselTemperatureC") : 20, -50, 4000);
+        this.vesselCoolantM3 = Math.max(0, tag.getInt("VesselCoolantM3"));
+        this.vesselCapacityM3 = Math.max(0, tag.getInt("VesselCapacityM3"));
+        this.vesselGasPercent = Mth.clamp(tag.getInt("VesselGasPercent"), 0, 100);
+        this.vesselIntegrityPercent = Mth.clamp(tag.contains("VesselIntegrityPercent") ? tag.getInt("VesselIntegrityPercent") : 100, 0, 100);
+        this.vesselPressureLimitTenths = Mth.clamp(tag.contains("VesselPressureLimitTenths") ? tag.getInt("VesselPressureLimitTenths") : 700, 0, 2500);
     }
 }

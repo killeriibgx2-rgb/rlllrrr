@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "fly_drone:block/vver_reactor_hull"
+    }
+  }
+}
