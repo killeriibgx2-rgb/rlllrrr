@@ -87,6 +87,18 @@ public class VverRegistry {
     public static final RegistryObject<Item> HULL_NOZZLE_ITEM =
             ITEMS.register("vver_reactor_hull_nozzle", () -> new BlockItem(HULL_NOZZLE_BLOCK.get(), new Item.Properties()));
 
+    public static final RegistryObject<Block> PIPE_BLOCK =
+            BLOCKS.register("vver_pipe", PipeBlock::new);
+
+    public static final RegistryObject<Item> PIPE_ITEM =
+            ITEMS.register("vver_pipe", () -> new BlockItem(PIPE_BLOCK.get(), new Item.Properties()));
+
+    public static final RegistryObject<Block> CORNER_PIPE_BLOCK =
+            BLOCKS.register("vver_corner_pipe", CornerPipeBlock::new);
+
+    public static final RegistryObject<Item> CORNER_PIPE_ITEM =
+            ITEMS.register("vver_corner_pipe", () -> new BlockItem(CORNER_PIPE_BLOCK.get(), new Item.Properties()));
+
     public static final RegistryObject<Item> CORE_FILLER_ITEM =
             ITEMS.register("vver_core_filler", CoreFillerItem::new);
 
@@ -107,6 +119,8 @@ public class VverRegistry {
                 event.accept(HULL_BOTTOM_ITEM.get());
                 event.accept(HULL_LID_ITEM.get());
                 event.accept(HULL_NOZZLE_ITEM.get());
+                event.accept(PIPE_ITEM.get());
+                event.accept(CORNER_PIPE_ITEM.get());
                 event.accept(CORE_FILLER_ITEM.get());
             }
         });
