@@ -77,6 +77,12 @@ public class ReactorVesselData extends SavedData {
         if (!result.complete) {
             return matched;
         }
+        if (matched != null
+                && matched.capacity > 0.0
+                && result.capacity < matched.capacity * 0.35
+                && result.shell.size() < Math.max(1, matched.shellPositions.size() / 2)) {
+            return matched;
+        }
         if (matched == null) {
             matched = new Vessel();
             this.vessels.add(matched);
@@ -108,12 +114,7 @@ public class ReactorVesselData extends SavedData {
             return cached;
         }
         Vessel scanned = findOrScan(level, anchor, coreBases);
-        if (scanned == null && cached != null) {
-            this.vessels.remove(cached);
-            setDirty();
-            return null;
-        }
-        return scanned;
+        return scanned != null ? scanned : cached;
     }
 
     @Nullable
@@ -285,11 +286,36 @@ public class ReactorVesselData extends SavedData {
                 continue;
             }
             BlockPos remaining = null;
-            for (long packed : vessel.shellPositions) {
-                BlockPos candidate = BlockPos.of(packed);
+            for (Direction direction : Direction.values()) {
+                BlockPos candidate = pos.relative(direction);
                 if (level.isLoaded(candidate) && level.getBlockState(candidate).getBlock() instanceof HullBlock) {
                     remaining = candidate;
                     break;
+                }
+            }
+            if (remaining == null) {
+                for (int dx = -1; dx <= 1 && remaining == null; dx++) {
+                    for (int dy = -1; dy <= 1 && remaining == null; dy++) {
+                        for (int dz = -1; dz <= 1; dz++) {
+                            if (dx == 0 && dy == 0 && dz == 0) {
+                                continue;
+                            }
+                            BlockPos candidate = pos.offset(dx, dy, dz);
+                            if (level.isLoaded(candidate) && level.getBlockState(candidate).getBlock() instanceof HullBlock) {
+                                remaining = candidate;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (remaining == null) {
+                for (long packed : vessel.shellPositions) {
+                    BlockPos candidate = BlockPos.of(packed);
+                    if (level.isLoaded(candidate) && level.getBlockState(candidate).getBlock() instanceof HullBlock) {
+                        remaining = candidate;
+                        break;
+                    }
                 }
             }
             if (remaining != null) {
@@ -596,8 +622,6 @@ public class ReactorVesselData extends SavedData {
                 vessel.gasAmount = gas * Math.max(1.0, vessel.pressure);
             }
             recalculateSealedPressure(vessel);
-        } else if (vessel.coolant > vessel.capacity) {
-            vessel.coolant = vessel.capacity;
         }
         setDirty();
     }
