@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "missing_axis=x": {
+      "model": "fly_drone:block/vver_x_shaped_pipe_yz"
+    },
+    "missing_axis=y": {
+      "model": "fly_drone:block/vver_x_shaped_pipe"
+    },
+    "missing_axis=z": {
+      "model": "fly_drone:block/vver_x_shaped_pipe_xy"
+    }
+  }
+}

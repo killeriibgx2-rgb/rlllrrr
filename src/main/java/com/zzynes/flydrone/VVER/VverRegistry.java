@@ -99,6 +99,18 @@ public class VverRegistry {
     public static final RegistryObject<Item> CORNER_PIPE_ITEM =
             ITEMS.register("vver_corner_pipe", () -> new BlockItem(CORNER_PIPE_BLOCK.get(), new Item.Properties()));
 
+    public static final RegistryObject<Block> TEE_PIPE_BLOCK =
+            BLOCKS.register("vver_t_shaped_pipe", TeePipeBlock::new);
+
+    public static final RegistryObject<Item> TEE_PIPE_ITEM =
+            ITEMS.register("vver_t_shaped_pipe", () -> new BlockItem(TEE_PIPE_BLOCK.get(), new Item.Properties()));
+
+    public static final RegistryObject<Block> CROSS_PIPE_BLOCK =
+            BLOCKS.register("vver_x_shaped_pipe", CrossPipeBlock::new);
+
+    public static final RegistryObject<Item> CROSS_PIPE_ITEM =
+            ITEMS.register("vver_x_shaped_pipe", () -> new BlockItem(CROSS_PIPE_BLOCK.get(), new Item.Properties()));
+
     public static final RegistryObject<Item> CORE_FILLER_ITEM =
             ITEMS.register("vver_core_filler", CoreFillerItem::new);
 
@@ -121,6 +133,8 @@ public class VverRegistry {
                 event.accept(HULL_NOZZLE_ITEM.get());
                 event.accept(PIPE_ITEM.get());
                 event.accept(CORNER_PIPE_ITEM.get());
+                event.accept(TEE_PIPE_ITEM.get());
+                event.accept(CROSS_PIPE_ITEM.get());
                 event.accept(CORE_FILLER_ITEM.get());
             }
         });
