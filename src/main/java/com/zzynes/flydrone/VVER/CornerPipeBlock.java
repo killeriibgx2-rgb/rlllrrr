@@ -23,6 +23,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class CornerPipeBlock extends HorizontalDirectionalBlock {
@@ -74,6 +76,10 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Direction towardClickedBlock = context.getClickedFace().getOpposite();
+        BlockState autoConnected = this.autoConnectedState(context, towardClickedBlock);
+        if (autoConnected != null) {
+            return autoConnected;
+        }
         Direction towardPlayer = this.chooseTowardPlayer(context, towardClickedBlock);
         return this.stateForPorts(towardClickedBlock, towardPlayer);
     }
@@ -108,6 +114,57 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
         return Shapes.empty();
     }
 
+    @Nullable
+    private BlockState autoConnectedState(BlockPlaceContext context, Direction towardClickedBlock) {
+        List<Direction> connections = new ArrayList<>();
+        BlockPos placedPos = context.getClickedPos();
+        for (Direction direction : Direction.values()) {
+            BlockState neighbor = context.getLevel().getBlockState(placedPos.relative(direction));
+            if (connectsToward(neighbor, direction.getOpposite())) {
+                connections.add(direction);
+            }
+        }
+        if (connections.size() < 2) {
+            return null;
+        }
+        if (connections.contains(towardClickedBlock)) {
+            Direction second = this.chooseConnectedTowardPlayer(context, towardClickedBlock, connections);
+            return second != null ? this.stateForPorts(towardClickedBlock, second) : null;
+        }
+        if (connections.size() == 2) {
+            Direction first = connections.get(0);
+            Direction second = connections.get(1);
+            return first.getAxis() != second.getAxis() ? this.stateForPorts(first, second) : null;
+        }
+        return null;
+    }
+
+    @Nullable
+    private Direction chooseConnectedTowardPlayer(BlockPlaceContext context, Direction first, List<Direction> connections) {
+        Vec3 towardPlayer = this.towardPlayerVector(context);
+        Direction best = null;
+        double bestValue = -Double.MAX_VALUE;
+        for (Direction direction : connections) {
+            if (direction.getAxis() == first.getAxis()) {
+                continue;
+            }
+            double value = directionScore(towardPlayer, direction);
+            if (value > bestValue) {
+                bestValue = value;
+                best = direction;
+            }
+        }
+        return best;
+    }
+
+    private static boolean connectsToward(BlockState state, Direction towardPlacedBlock) {
+        if (PipeBlock.hasPort(state, towardPlacedBlock) || CornerPipeBlock.hasPort(state, towardPlacedBlock)) {
+            return true;
+        }
+        return state.getBlock() instanceof HullNozzleBlock
+                && state.getValue(HullNozzleBlock.FACING) == towardPlacedBlock;
+    }
+
     private BlockState stateForPorts(Direction first, Direction second) {
         if (first.getAxis() != Direction.Axis.Y && second.getAxis() != Direction.Axis.Y) {
             Direction facing = second == first.getClockWise() ? first : second;
@@ -123,20 +180,14 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
     }
 
     private Direction chooseTowardPlayer(BlockPlaceContext context, Direction towardClickedBlock) {
-        Vec3 placedCenter = Vec3.atCenterOf(context.getClickedPos());
-        Player player = context.getPlayer();
-        Vec3 towardPlayer = player != null
-                ? player.getEyePosition().subtract(placedCenter)
-                : Vec3.atLowerCornerOf(context.getNearestLookingDirection().getOpposite().getNormal());
+        Vec3 towardPlayer = this.towardPlayerVector(context);
         Direction best = null;
         double bestValue = 0.0D;
         for (Direction direction : Direction.values()) {
             if (direction.getAxis() == towardClickedBlock.getAxis()) {
                 continue;
             }
-            double value = towardPlayer.x * direction.getStepX()
-                    + towardPlayer.y * direction.getStepY()
-                    + towardPlayer.z * direction.getStepZ();
+            double value = directionScore(towardPlayer, direction);
             if (value > bestValue) {
                 bestValue = value;
                 best = direction;
@@ -149,6 +200,20 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
             return context.getHorizontalDirection().getOpposite();
         }
         return towardPlayer.y < 0.0D ? Direction.DOWN : Direction.UP;
+    }
+
+    private Vec3 towardPlayerVector(BlockPlaceContext context) {
+        Vec3 placedCenter = Vec3.atCenterOf(context.getClickedPos());
+        Player player = context.getPlayer();
+        return player != null
+                ? player.getEyePosition().subtract(placedCenter)
+                : Vec3.atLowerCornerOf(context.getNearestLookingDirection().getOpposite().getNormal());
+    }
+
+    private static double directionScore(Vec3 vector, Direction direction) {
+        return vector.x * direction.getStepX()
+                + vector.y * direction.getStepY()
+                + vector.z * direction.getStepZ();
     }
 
     private static VoxelShape armShape(Direction direction) {
