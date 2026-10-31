@@ -32,9 +32,7 @@ public class VverEvents {
         Level level = event.getLevel();
         BlockPos clicked = event.getPos();
         BlockState state = level.getBlockState(clicked);
-        BlockPos partMaster = BshuCollision.masterPosForPart(clicked, state);
-        BlockPos bshuPos = state.is(VverRegistry.BSHU_BLOCK.get()) ? clicked : partMaster;
-        boolean bshu = bshuPos != null;
+        boolean bshu = state.is(VverRegistry.BSHU_BLOCK.get());
         BlockPos component = bshu ? null : BshuBlockEntity.componentBase(level, clicked);
         if (!bshu && component == null) {
             return;
@@ -45,7 +43,7 @@ public class VverEvents {
             return;
         }
         if (bshu) {
-            linkFromHeldStick(player, bshuPos);
+            linkFromHeldStick(player, clicked);
         } else {
             CompoundTag tag = stack.getOrCreateTag();
             tag.putLong(KEY_POS, component.asLong());
