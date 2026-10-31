@@ -66,6 +66,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     private int vesselGasPercent;
     private int vesselIntegrityPercent = 100;
     private int vesselPressureLimitTenths = 700;
+    private int vesselNozzlePerformancePercent;
+    private int vesselConnectedNozzleCount;
 
     public BshuBlockEntity(BlockPos pos, BlockState state) {
         super(VverRegistry.BSHU_BLOCK_ENTITY.get(), pos, state);
@@ -259,6 +261,14 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         return this.vesselIntegrityPercent;
     }
 
+    public int getVesselNozzlePerformancePercent() {
+        return this.vesselNozzlePerformancePercent;
+    }
+
+    public int getVesselConnectedNozzleCount() {
+        return this.vesselConnectedNozzleCount;
+    }
+
     @Nullable
     public BlockPos getSeedPos() {
         return this.seedPos;
@@ -379,6 +389,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         int gas = (int) Math.round(vessel.gasPercent());
         int integrity = (int) Math.round(vessel.integrity());
         int limit = (int) Math.round(vessel.pressureLimit() * 10.0);
+        int nozzlePerformance = (int) Math.round(vessel.nozzlePerformance());
+        int connectedNozzles = vessel.connectedNozzleCount();
         boolean changed = this.vesselPresent != present
                 || this.vesselSealed != sealed
                 || this.vesselLeaking != leaking
@@ -389,7 +401,9 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
                 || this.vesselCapacityM3 != capacity
                 || this.vesselGasPercent != gas
                 || this.vesselIntegrityPercent != integrity
-                || this.vesselPressureLimitTenths != limit;
+                || this.vesselPressureLimitTenths != limit
+                || this.vesselNozzlePerformancePercent != nozzlePerformance
+                || this.vesselConnectedNozzleCount != connectedNozzles;
         this.vesselPresent = present;
         this.vesselSealed = sealed;
         this.vesselLeaking = leaking;
@@ -401,6 +415,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         this.vesselGasPercent = gas;
         this.vesselIntegrityPercent = integrity;
         this.vesselPressureLimitTenths = limit;
+        this.vesselNozzlePerformancePercent = nozzlePerformance;
+        this.vesselConnectedNozzleCount = connectedNozzles;
         return changed;
     }
 
@@ -415,7 +431,9 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
                 || this.vesselCapacityM3 != 0
                 || this.vesselGasPercent != 0
                 || this.vesselIntegrityPercent != 100
-                || this.vesselPressureLimitTenths != 700;
+                || this.vesselPressureLimitTenths != 700
+                || this.vesselNozzlePerformancePercent != 0
+                || this.vesselConnectedNozzleCount != 0;
         this.vesselPresent = false;
         this.vesselSealed = false;
         this.vesselLeaking = false;
@@ -427,6 +445,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         this.vesselGasPercent = 0;
         this.vesselIntegrityPercent = 100;
         this.vesselPressureLimitTenths = 700;
+        this.vesselNozzlePerformancePercent = 0;
+        this.vesselConnectedNozzleCount = 0;
         return changed;
     }
 
@@ -988,6 +1008,8 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         tag.putInt("VesselGasPercent", this.vesselGasPercent);
         tag.putInt("VesselIntegrityPercent", this.vesselIntegrityPercent);
         tag.putInt("VesselPressureLimitTenths", this.vesselPressureLimitTenths);
+        tag.putInt("VesselNozzlePerformancePercent", this.vesselNozzlePerformancePercent);
+        tag.putInt("VesselConnectedNozzleCount", this.vesselConnectedNozzleCount);
     }
 
     private void readState(CompoundTag tag) {
@@ -1050,5 +1072,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         this.vesselGasPercent = Mth.clamp(tag.getInt("VesselGasPercent"), 0, 100);
         this.vesselIntegrityPercent = Mth.clamp(tag.contains("VesselIntegrityPercent") ? tag.getInt("VesselIntegrityPercent") : 100, 0, 100);
         this.vesselPressureLimitTenths = Mth.clamp(tag.contains("VesselPressureLimitTenths") ? tag.getInt("VesselPressureLimitTenths") : 700, 0, 2500);
+        this.vesselNozzlePerformancePercent = Mth.clamp(tag.getInt("VesselNozzlePerformancePercent"), 0, 100);
+        this.vesselConnectedNozzleCount = Math.max(0, tag.getInt("VesselConnectedNozzleCount"));
     }
 }

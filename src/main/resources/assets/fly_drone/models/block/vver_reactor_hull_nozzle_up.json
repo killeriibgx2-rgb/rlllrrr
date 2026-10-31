@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "up": "fly_drone:block/vver_reactor_hull_nozzle",
+    "down": "fly_drone:block/vver_reactor_hull",
+    "north": "fly_drone:block/vver_reactor_hull",
+    "south": "fly_drone:block/vver_reactor_hull",
+    "east": "fly_drone:block/vver_reactor_hull",
+    "west": "fly_drone:block/vver_reactor_hull",
+    "particle": "fly_drone:block/vver_reactor_hull_nozzle"
+  }
+}

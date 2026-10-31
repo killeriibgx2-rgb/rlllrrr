@@ -720,6 +720,7 @@ public final class BshuScreenTextures {
         if (be.isVesselPresent()) {
             rows.add(new ParameterRow("Корпус реактора: " + (be.isVesselSealed() ? "герметичен" : "не герметичен") + " · прочность обшивки " + be.getVesselIntegrityPercent() + "% · объём " + be.getVesselCapacityM3() + " м³", false));
             rows.add(new ParameterRow("Первый контур: температура " + be.getVesselTemperatureC() + "°C · давление " + pressureText(be.getVesselPressureAtm()) + " атм · предел " + pressureText(be.getVesselPressureLimitAtm()) + " атм · вода " + be.getVesselCoolantM3() + "/" + be.getVesselCapacityM3() + " м³ · подушка " + be.getVesselGasPercent() + "% · расход —", false));
+            rows.add(new ParameterRow("Патрубки корпуса: сообщаются с полостью " + be.getVesselConnectedNozzleCount() + " · производительность петель " + be.getVesselNozzlePerformancePercent() + "%", false));
         } else {
             rows.add(new ParameterRow("Корпус реактора: не обнаружен · прочность обшивки —", false));
             rows.add(new ParameterRow("Первый контур: температура — · давление — · расход —", false));

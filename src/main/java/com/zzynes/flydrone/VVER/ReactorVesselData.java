@@ -567,6 +567,8 @@ public class ReactorVesselData extends SavedData {
         vessel.capacity = Math.max(0.0, result.capacity);
         vessel.retainedCapacity = Mth.clamp(result.retainedCapacity, 0.0, vessel.capacity);
         vessel.pressureLimit = result.pressureLimit;
+        vessel.nozzlePerformance = Mth.clamp(result.nozzlePerformance, 0.0, 100.0);
+        vessel.connectedNozzleCount = Math.max(0, result.connectedNozzleCount);
         vessel.sealed = result.sealed;
         vessel.roleComplete = result.roleComplete;
         vessel.coreTopY = result.coreTopY;
@@ -670,6 +672,8 @@ public class ReactorVesselData extends SavedData {
         private double integrity = 100.0;
         private double pressureLimit = 70.0;
         private double leakRate;
+        private double nozzlePerformance;
+        private int connectedNozzleCount;
         private int coreTopY = Integer.MIN_VALUE;
         private int lowestLeakY = Integer.MAX_VALUE;
         private int minCoreClearance = -1;
@@ -718,6 +722,14 @@ public class ReactorVesselData extends SavedData {
 
         public double leakRate() {
             return this.leakRate;
+        }
+
+        public double nozzlePerformance() {
+            return this.nozzlePerformance;
+        }
+
+        public int connectedNozzleCount() {
+            return this.connectedNozzleCount;
         }
 
         public int minCoreClearance() {
@@ -789,6 +801,8 @@ public class ReactorVesselData extends SavedData {
             tag.putDouble("Temperature", this.temperature);
             tag.putDouble("Integrity", this.integrity);
             tag.putDouble("PressureLimit", this.pressureLimit);
+            tag.putDouble("NozzlePerformance", this.nozzlePerformance);
+            tag.putInt("ConnectedNozzles", this.connectedNozzleCount);
             tag.putInt("CoreTopY", this.coreTopY);
             tag.putInt("LowestLeakY", this.lowestLeakY);
             tag.putInt("MinClearance", this.minCoreClearance);
@@ -825,6 +839,8 @@ public class ReactorVesselData extends SavedData {
             vessel.temperature = tag.contains("Temperature") ? tag.getDouble("Temperature") : VverThermal.AMBIENT_C;
             vessel.integrity = Mth.clamp(tag.getDouble("Integrity"), 0.0, 100.0);
             vessel.pressureLimit = tag.contains("PressureLimit") ? tag.getDouble("PressureLimit") : 70.0;
+            vessel.nozzlePerformance = Mth.clamp(tag.getDouble("NozzlePerformance"), 0.0, 100.0);
+            vessel.connectedNozzleCount = Math.max(0, tag.getInt("ConnectedNozzles"));
             vessel.coreTopY = tag.contains("CoreTopY") ? tag.getInt("CoreTopY") : Integer.MIN_VALUE;
             vessel.lowestLeakY = tag.contains("LowestLeakY") ? tag.getInt("LowestLeakY") : Integer.MAX_VALUE;
             vessel.minCoreClearance = tag.contains("MinClearance") ? tag.getInt("MinClearance") : -1;
