@@ -336,9 +336,6 @@ public final class ReactorVesselScanner {
                 }
             }
         }
-        if (!checkNozzles(level, result)) {
-            sealed = false;
-        }
         result.sealed = sealed && result.leakPositions.isEmpty();
     }
 
@@ -455,12 +452,9 @@ public final class ReactorVesselScanner {
                 BlockPos next = pos.relative(direction);
                 if (!inside(next, result.hullMinX, result.hullMinY, result.hullMinZ, result.hullMaxX, result.hullMaxY, result.hullMaxZ)) {
                     addLeak(result, next.immutable(), direction);
-                } else if (exterior.contains(next)) {
-                    addLeak(result, next.immutable(), direction);
                 }
             }
         }
-        checkNozzles(level, result);
         result.sealed = false;
     }
 
@@ -485,32 +479,79 @@ public final class ReactorVesselScanner {
         }
     }
 
-    private static boolean checkNozzles(ServerLevel level, Result result) {
-        boolean sealed = true;
-        for (BlockPos pos : new ArrayList<>(result.shell)) {
+    private static void computeNozzlePerformance(ServerLevel level, Result result) {
+        int cavityMinY = Integer.MAX_VALUE;
+        int cavityMaxY = Integer.MIN_VALUE;
+        for (BlockPos pos : result.cavity) {
+            cavityMinY = Math.min(cavityMinY, pos.getY());
+            cavityMaxY = Math.max(cavityMaxY, pos.getY());
+        }
+        for (BlockPos pos : result.coreCells) {
+            cavityMinY = Math.min(cavityMinY, pos.getY());
+            cavityMaxY = Math.max(cavityMaxY, pos.getY());
+        }
+        if (cavityMinY == Integer.MAX_VALUE) {
+            cavityMinY = result.hullMinY;
+            cavityMaxY = result.hullMaxY;
+        }
+        List<NozzleScore> scores = new ArrayList<>();
+        for (BlockPos pos : result.shell) {
             BlockState state = state(level, pos);
             if (state == null || !(state.getBlock() instanceof HullNozzleBlock)) {
                 continue;
             }
             Direction facing = state.getValue(HullNozzleBlock.FACING);
             BlockPos inside = pos.relative(facing.getOpposite());
-            BlockPos outside = pos.relative(facing);
-            boolean insideCavity = result.cavity.contains(inside) || result.coreCells.contains(inside);
-            boolean frontInCavity = result.cavity.contains(outside) || result.coreCells.contains(outside);
-            if (frontInCavity && !insideCavity) {
-                addLeak(result, pos.immutable(), facing.getOpposite());
-                sealed = false;
+            double access = result.cavity.contains(inside) || result.coreCells.contains(inside) ? 1.0 : 0.0;
+            if (access <= 0.0) {
+                for (Direction direction : Direction.values()) {
+                    BlockPos neighbor = pos.relative(direction);
+                    if (result.cavity.contains(neighbor) || result.coreCells.contains(neighbor)) {
+                        access = 0.35;
+                        break;
+                    }
+                }
+            }
+            if (access <= 0.0) {
                 continue;
             }
-            if (!insideCavity) {
-                continue;
-            }
-            if (!level.isLoaded(outside) || isPassable(level, outside)) {
-                addLeak(result, outside.immutable(), facing);
-                sealed = false;
+            double orientation = facing.getAxis().isHorizontal() ? 1.0 : facing == Direction.UP ? 0.78 : 0.68;
+            double height = cavityMaxY <= cavityMinY ? 0.5 : (double) (pos.getY() - cavityMinY) / (double) (cavityMaxY - cavityMinY);
+            height = Math.max(0.0, Math.min(1.0, height));
+            double inlet = access * orientation * (1.0 - 0.72 * height);
+            double outlet = access * orientation * (0.28 + 0.72 * height);
+            scores.add(new NozzleScore(inlet, outlet, height));
+            result.bestInletPotential = Math.max(result.bestInletPotential, inlet);
+            result.bestOutletPotential = Math.max(result.bestOutletPotential, outlet);
+        }
+        result.connectedNozzleCount = scores.size();
+        if (scores.isEmpty()) {
+            result.nozzlePerformance = 0.0;
+            return;
+        }
+        if (scores.size() == 1) {
+            NozzleScore only = scores.get(0);
+            result.nozzlePerformance = Math.max(only.inlet(), only.outlet()) * 15.0;
+            return;
+        }
+        double bestPair = 0.0;
+        for (int i = 0; i < scores.size(); i++) {
+            for (int j = 0; j < scores.size(); j++) {
+                if (i == j) {
+                    continue;
+                }
+                NozzleScore inlet = scores.get(i);
+                NozzleScore outlet = scores.get(j);
+                double separation = Math.abs(outlet.height() - inlet.height());
+                double pair = Math.sqrt(Math.max(0.0, inlet.inlet() * outlet.outlet())) * (0.45 + 0.55 * separation);
+                bestPair = Math.max(bestPair, pair);
             }
         }
-        return sealed;
+        double countFactor = 0.78 + 0.11 * Math.min(2, scores.size() - 2);
+        result.nozzlePerformance = Math.max(0.0, Math.min(100.0, bestPair * countFactor * 100.0));
+    }
+
+    private record NozzleScore(double inlet, double outlet, double height) {
     }
 
     private static void finish(ServerLevel level, Result result) {
@@ -574,6 +615,7 @@ public final class ReactorVesselScanner {
             cavityMaxY = Math.max(cavityMaxY, pos.getY());
         }
         result.headroom = result.coreCells.isEmpty() || cavityMaxY == Integer.MIN_VALUE ? 0 : Math.max(0, cavityMaxY - result.coreTopY);
+        computeNozzlePerformance(level, result);
         result.pressureLimit = computePressureLimit(result);
     }
 
@@ -802,10 +844,14 @@ public final class ReactorVesselScanner {
         public double averageThickness;
         public double properBottomFraction = 1.0;
         public double properLidFraction = 1.0;
+        public double nozzlePerformance;
+        public double bestInletPotential;
+        public double bestOutletPotential;
         public int wallCount;
         public int bottomCount;
         public int lidCount;
         public int nozzleCount;
+        public int connectedNozzleCount;
         public int hullMinX;
         public int hullMinY;
         public int hullMinZ;
