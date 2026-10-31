@@ -4,11 +4,9 @@ import com.zzynes.flydrone.DRONE.FlyDroneMod;
 import com.zzynes.flydrone.DRONE.FpvOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.MovementInputUpdateEvent;
@@ -39,17 +37,7 @@ public class BshuClientHandler {
         }
         if (minecraft.hitResult != null && minecraft.hitResult.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
             double vanillaDistance = minecraft.hitResult.getLocation().distanceTo(minecraft.player.getEyePosition(minecraft.getFrameTime()));
-            boolean sameBshu = false;
-            if (minecraft.hitResult instanceof net.minecraft.world.phys.BlockHitResult blockHit) {
-                BlockPos vanillaPos = blockHit.getBlockPos();
-                if (vanillaPos.equals(hit.blockPos())) {
-                    sameBshu = true;
-                } else {
-                    BlockState vanillaState = minecraft.level.getBlockState(vanillaPos);
-                    BlockPos partMaster = BshuCollision.masterPosForPart(vanillaPos, vanillaState);
-                    sameBshu = hit.blockPos().equals(partMaster);
-                }
-            }
+            boolean sameBshu = minecraft.hitResult instanceof net.minecraft.world.phys.BlockHitResult blockHit && blockHit.getBlockPos().equals(hit.blockPos());
             if (!sameBshu && vanillaDistance < hit.distance() - 0.08) {
                 return;
             }

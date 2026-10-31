@@ -55,8 +55,6 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     private BlockPos seedPos;
     private int rescanCooldown;
     private int errorCheckCooldown;
-    private int collisionCheckCooldown;
-    private boolean collisionPartsReady;
 
     public BshuBlockEntity(BlockPos pos, BlockState state) {
         super(VverRegistry.BSHU_BLOCK_ENTITY.get(), pos, state);
@@ -68,15 +66,6 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
             return;
         }
         long now = level.getGameTime();
-        if (!entity.collisionPartsReady) {
-            entity.collisionCheckCooldown--;
-            if (entity.collisionCheckCooldown <= 0) {
-                entity.collisionPartsReady = BshuCollision.placeParts(level, pos, state.getValue(BshuBlock.FACING));
-                if (!entity.collisionPartsReady) {
-                    entity.collisionCheckCooldown = 100;
-                }
-            }
-        }
         if (entity.linked) {
             entity.rescanCooldown--;
             if (entity.rescanCooldown <= 0) {
