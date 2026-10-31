@@ -15,43 +15,43 @@ Daemon will be stopped at the end of the build
 Architectury Loom: 1.7.435
 You are using an outdated version of Architectury Loom! This version will not receive any support, please consider updating!
 :merging mappings (InstallerTools, srg + mojmap)
-:merged mappings (InstallerTools, srg + mojmap) in 3.163 s
+:merged mappings (InstallerTools, srg + mojmap) in 4.026 s
 :executing 10 MCP steps
 :step 1/10 - downloadClient
-:downloadClient done in 518.4 μs
+:downloadClient done in 593.4 μs
 :step 2/10 - downloadServer
-:downloadServer done in 12.96 μs
+:downloadServer done in 17.45 μs
 :step 3/10 - extractServer with net.minecraftforge:installertools:1.3.2:fatjar
-:extractServer done in 486.3 ms
+:extractServer done in 615.5 ms
 :step 4/10 - downloadClientMappings
-:downloadClientMappings done in 85.11 ms
+:downloadClientMappings done in 94.26 ms
 :step 5/10 - mergeMappings with net.minecraftforge:installertools:1.2.0:fatjar
-:mergeMappings done in 2.593 s
+:mergeMappings done in 3.265 s
 :step 6/10 - stripClient
-:stripClient done in 1.135 s
+:stripClient done in 1.475 s
 :step 7/10 - stripServer
-:stripServer done in 981.7 ms
+:stripServer done in 1.189 s
 :step 8/10 - merge with net.minecraftforge:mergetool:1.1.7:fatjar
-:merge done in 3.314 s
+:merge done in 4.399 s
 :step 9/10 - listLibraries
 :downloading minecraft libraries, this may take a while...
-:listLibraries done in 10.29 s
+:listLibraries done in 4.571 s
 :step 10/10 - rename with net.minecraftforge:ForgeAutoRenamingTool:1.0.2:all
-:rename done in 8.506 s
+:rename done in 11.18 s
 :patching jars
-:patched jars in 15.86 s
+:patched jars in 11.62 s
 :access transforming minecraft
-[14:13:08] [main/INFO]: Access Transformer processor running version 8.0.5+67+master.d58c7dfe
-[14:13:08] [main/INFO]: Command line arguments [--inJar, /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-patched.jar, --outJar, /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar, --atFile, /tmp/at-conf553157645643178949.cfg]
-[14:13:08] [main/INFO]: Reading from /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-patched.jar
-[14:13:08] [main/INFO]: Writing to /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar
-[14:13:08] [main/INFO]: Transformer file /tmp/at-conf553157645643178949.cfg
-[14:13:08] [main/WARN]: Found existing output jar /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar, overwriting
-[14:13:12] [main/INFO]: JAR transformation complete /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar
-:access transformed minecraft in 6.748 s
+[14:30:53] [main/INFO]: Access Transformer processor running version 8.0.5+67+master.d58c7dfe
+[14:30:53] [main/INFO]: Command line arguments [--inJar, /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-patched.jar, --outJar, /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar, --atFile, /tmp/at-conf15909927577515997381.cfg]
+[14:30:53] [main/INFO]: Reading from /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-patched.jar
+[14:30:53] [main/INFO]: Writing to /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar
+[14:30:53] [main/INFO]: Transformer file /tmp/at-conf15909927577515997381.cfg
+[14:30:53] [main/WARN]: Found existing output jar /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar, overwriting
+[14:30:57] [main/INFO]: JAR transformation complete /home/runner/.gradle/caches/fabric-loom/1.20.1/forge/1.20.1-47.3.0/minecraft-merged-srg-at-patched.jar
+:access transformed minecraft in 6.592 s
 :remapping minecraft (TinyRemapper, srg -> official)
 :remapping 1 mods from modImplementation (java-api)
-:remapped 1 mods (srg -> named) in 880.2 ms
+:remapped 1 mods (srg -> named) in 1.202 s
 
 > Task :compileJava
 Note: Some input files use or override a deprecated API.
@@ -68,7 +68,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remapSourcesJar
 > Task :assemble
 > Task :build
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1793455850459.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1793456950804.json
 
-BUILD SUCCESSFUL in 3m 24s
+BUILD SUCCESSFUL in 3m 3s
 7 actionable tasks: 7 executed
