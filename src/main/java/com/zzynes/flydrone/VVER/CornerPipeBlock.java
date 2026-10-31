@@ -3,6 +3,7 @@ package com.zzynes.flydrone.VVER;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
@@ -72,21 +73,9 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        BlockState clickedState = context.getLevel().getBlockState(context.getClickedPos());
-        Direction clickedFace = context.getClickedFace();
-        if (isConnectorFace(clickedState, clickedFace)) {
-            Direction back = clickedFace.getOpposite();
-            return this.stateForPorts(back, this.chooseExit(context, back));
-        }
-        if (clickedFace.getAxis() == Direction.Axis.Y) {
-            return this.defaultBlockState()
-                    .setValue(FACING, context.getHorizontalDirection().getOpposite())
-                    .setValue(BEND, Bend.FLAT);
-        }
-        Bend bend = context.getClickLocation().y >= context.getClickedPos().getY() + 0.5D ? Bend.UP : Bend.DOWN;
-        return this.defaultBlockState()
-                .setValue(FACING, clickedFace)
-                .setValue(BEND, bend);
+        Direction towardClickedBlock = context.getClickedFace().getOpposite();
+        Direction towardPlayer = this.chooseTowardPlayer(context, towardClickedBlock);
+        return this.stateForPorts(towardClickedBlock, towardPlayer);
     }
 
     @Override
@@ -119,14 +108,6 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
         return Shapes.empty();
     }
 
-    private static boolean isConnectorFace(BlockState state, Direction clickedFace) {
-        if (PipeBlock.hasPort(state, clickedFace) || CornerPipeBlock.hasPort(state, clickedFace)) {
-            return true;
-        }
-        return state.getBlock() instanceof HullNozzleBlock
-                && state.getValue(HullNozzleBlock.FACING) == clickedFace;
-    }
-
     private BlockState stateForPorts(Direction first, Direction second) {
         if (first.getAxis() != Direction.Axis.Y && second.getAxis() != Direction.Axis.Y) {
             Direction facing = second == first.getClockWise() ? first : second;
@@ -141,21 +122,21 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
                 .setValue(BEND, bend);
     }
 
-    private Direction chooseExit(BlockPlaceContext context, Direction back) {
-        Direction look = context.getNearestLookingDirection();
-        if (look.getAxis() != back.getAxis()) {
-            return look;
-        }
-        Vec3 relative = context.getClickLocation().subtract(Vec3.atCenterOf(context.getClickedPos()));
+    private Direction chooseTowardPlayer(BlockPlaceContext context, Direction towardClickedBlock) {
+        Vec3 placedCenter = Vec3.atCenterOf(context.getClickedPos());
+        Player player = context.getPlayer();
+        Vec3 towardPlayer = player != null
+                ? player.getEyePosition().subtract(placedCenter)
+                : Vec3.atLowerCornerOf(context.getNearestLookingDirection().getOpposite().getNormal());
         Direction best = null;
-        double bestValue = 0.1D;
+        double bestValue = 0.0D;
         for (Direction direction : Direction.values()) {
-            if (direction.getAxis() == back.getAxis()) {
+            if (direction.getAxis() == towardClickedBlock.getAxis()) {
                 continue;
             }
-            double value = relative.x * direction.getStepX()
-                    + relative.y * direction.getStepY()
-                    + relative.z * direction.getStepZ();
+            double value = towardPlayer.x * direction.getStepX()
+                    + towardPlayer.y * direction.getStepY()
+                    + towardPlayer.z * direction.getStepZ();
             if (value > bestValue) {
                 bestValue = value;
                 best = direction;
@@ -164,8 +145,10 @@ public class CornerPipeBlock extends HorizontalDirectionalBlock {
         if (best != null) {
             return best;
         }
-        Direction horizontal = context.getHorizontalDirection();
-        return horizontal.getAxis() != back.getAxis() ? horizontal : Direction.UP;
+        if (towardClickedBlock.getAxis() == Direction.Axis.Y) {
+            return context.getHorizontalDirection().getOpposite();
+        }
+        return towardPlayer.y < 0.0D ? Direction.DOWN : Direction.UP;
     }
 
     private static VoxelShape armShape(Direction direction) {
