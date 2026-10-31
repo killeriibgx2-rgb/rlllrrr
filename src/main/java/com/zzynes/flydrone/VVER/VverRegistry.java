@@ -63,6 +63,33 @@ public class VverRegistry {
     public static final RegistryObject<BlockEntityType<BshuBlockEntity>> BSHU_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("vver_bshu", () -> BlockEntityType.Builder.of(BshuBlockEntity::new, BSHU_BLOCK.get()).build(null));
 
+    public static final RegistryObject<Block> HULL_WALL_BLOCK =
+            BLOCKS.register("vver_reactor_hull", () -> new HullBlock(HullType.WALL));
+
+    public static final RegistryObject<Item> HULL_WALL_ITEM =
+            ITEMS.register("vver_reactor_hull", () -> new BlockItem(HULL_WALL_BLOCK.get(), new Item.Properties()));
+
+    public static final RegistryObject<Block> HULL_BOTTOM_BLOCK =
+            BLOCKS.register("vver_reactor_hull_bottom", () -> new HullBlock(HullType.BOTTOM));
+
+    public static final RegistryObject<Item> HULL_BOTTOM_ITEM =
+            ITEMS.register("vver_reactor_hull_bottom", () -> new BlockItem(HULL_BOTTOM_BLOCK.get(), new Item.Properties()));
+
+    public static final RegistryObject<Block> HULL_LID_BLOCK =
+            BLOCKS.register("vver_reactor_hull_lid", () -> new HullBlock(HullType.LID));
+
+    public static final RegistryObject<Item> HULL_LID_ITEM =
+            ITEMS.register("vver_reactor_hull_lid", () -> new BlockItem(HULL_LID_BLOCK.get(), new Item.Properties()));
+
+    public static final RegistryObject<Block> HULL_NOZZLE_BLOCK =
+            BLOCKS.register("vver_reactor_hull_nozzle", HullNozzleBlock::new);
+
+    public static final RegistryObject<Item> HULL_NOZZLE_ITEM =
+            ITEMS.register("vver_reactor_hull_nozzle", () -> new BlockItem(HULL_NOZZLE_BLOCK.get(), new Item.Properties()));
+
+    public static final RegistryObject<Item> CORE_FILLER_ITEM =
+            ITEMS.register("vver_core_filler", CoreFillerItem::new);
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
         ITEMS.register(eventBus);
@@ -76,6 +103,11 @@ public class VverRegistry {
             );
             if (event.getTabKey().equals(flyDroneTab)) {
                 event.accept(BSHU_ITEM.get());
+                event.accept(HULL_WALL_ITEM.get());
+                event.accept(HULL_BOTTOM_ITEM.get());
+                event.accept(HULL_LID_ITEM.get());
+                event.accept(HULL_NOZZLE_ITEM.get());
+                event.accept(CORE_FILLER_ITEM.get());
             }
         });
     }

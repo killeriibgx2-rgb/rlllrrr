@@ -29,7 +29,8 @@ public enum BshuError {
     VESSEL_STRENGTH("ПРОЧНОСТЬ КОРПУСА", true),
     STEAM_GENERATOR_DRY("ПГ БЕЗ ВОДЫ", false),
     VENT_FAILURE("ОТКАЗ ВЕНТИЛЯЦИИ", false),
-    DRAIN_FAILURE("ОТКАЗ СЛИВА", false);
+    DRAIN_FAILURE("ОТКАЗ СЛИВА", false),
+    HULL_NOT_SEALED("КОРПУС НЕ ГЕРМЕТИЧЕН", false);
 
     private final String label;
     private final boolean critical;

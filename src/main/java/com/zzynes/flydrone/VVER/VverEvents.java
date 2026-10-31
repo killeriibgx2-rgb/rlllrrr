@@ -3,6 +3,7 @@ package com.zzynes.flydrone.VVER;
 import com.zzynes.flydrone.DRONE.FlyDroneMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -11,6 +12,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -19,6 +21,16 @@ import net.minecraftforge.fml.common.Mod;
 public class VverEvents {
     private static final String KEY_DIMENSION = "FlyDroneBshuDimension";
     private static final String KEY_POS = "FlyDroneBshuPos";
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        for (ServerLevel level : event.getServer().getAllLevels()) {
+            ReactorVesselData.get(level).tick(level);
+        }
+    }
 
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
