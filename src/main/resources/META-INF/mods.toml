@@ -4,7 +4,7 @@ license="All rights reserved"
 
 [[mods]]
 modId="fly_drone"
-version="1.1.14"
+version="1.1.15"
 displayName="Fly Drone"
 authors="Zzynes"
 description='''
