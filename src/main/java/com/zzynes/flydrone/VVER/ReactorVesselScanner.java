@@ -8,10 +8,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 
@@ -120,17 +122,24 @@ public final class ReactorVesselScanner {
         }
         while (!queue.isEmpty() && output.size() < MAX_SHELL_CELLS) {
             BlockPos current = queue.remove();
-            for (Direction direction : Direction.values()) {
-                BlockPos next = current.relative(direction);
-                if (!level.isLoaded(next)) {
-                    result.complete = false;
-                    continue;
-                }
-                if (isHull(level, next) && output.add(next.immutable())) {
-                    queue.add(next.immutable());
-                    if (output.size() >= MAX_SHELL_CELLS) {
-                        result.complete = false;
-                        break;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (dx == 0 && dy == 0 && dz == 0) {
+                            continue;
+                        }
+                        BlockPos next = current.offset(dx, dy, dz);
+                        if (!level.isLoaded(next)) {
+                            result.complete = false;
+                            continue;
+                        }
+                        if (isHull(level, next) && output.add(next.immutable())) {
+                            queue.add(next.immutable());
+                            if (output.size() >= MAX_SHELL_CELLS) {
+                                result.complete = false;
+                                return;
+                            }
+                        }
                     }
                 }
             }
@@ -340,6 +349,209 @@ public final class ReactorVesselScanner {
     }
 
     private static void fillOpenBasin(ServerLevel level, Result result, Set<BlockPos> exterior, Collection<BlockPos> preferredCoreBases) {
+        if (!fillTrappedBasin(level, result, preferredCoreBases)) {
+            fillOpenBasinFallback(level, result, exterior, preferredCoreBases);
+        }
+    }
+
+    private static boolean fillTrappedBasin(ServerLevel level, Result result, Collection<BlockPos> preferredCoreBases) {
+        int graphMinX = result.hullMinX - 2;
+        int graphMinY = result.hullMinY - 2;
+        int graphMinZ = result.hullMinZ - 2;
+        int graphMaxX = result.hullMaxX + 2;
+        int graphMaxY = result.hullMaxY + 2;
+        int graphMaxZ = result.hullMaxZ + 2;
+        Map<BlockPos, Integer> escapeLevel = new HashMap<>();
+        PriorityQueue<EscapeEntry> priority = new PriorityQueue<>(Comparator.comparingInt(EscapeEntry::level));
+        for (int x = graphMinX; x <= graphMaxX; x++) {
+            for (int y = graphMinY; y <= graphMaxY; y++) {
+                for (int z = graphMinZ; z <= graphMaxZ; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    boolean graphBoundary = x == graphMinX || x == graphMaxX || y == graphMinY || y == graphMaxY || z == graphMinZ || z == graphMaxZ;
+                    boolean outsideHull = !inside(pos, result.hullMinX, result.hullMinY, result.hullMinZ, result.hullMaxX, result.hullMaxY, result.hullMaxZ);
+                    if (!graphBoundary && !outsideHull) {
+                        continue;
+                    }
+                    if (!level.isLoaded(pos)) {
+                        result.complete = false;
+                        continue;
+                    }
+                    if (isPassable(level, pos) || isCore(level, pos)) {
+                        int value = pos.getY() + 1;
+                        escapeLevel.put(pos, value);
+                        priority.add(new EscapeEntry(value, pos));
+                    }
+                }
+            }
+        }
+        while (!priority.isEmpty()) {
+            EscapeEntry entry = priority.remove();
+            if (escapeLevel.getOrDefault(entry.pos(), Integer.MAX_VALUE) != entry.level()) {
+                continue;
+            }
+            for (Direction direction : Direction.values()) {
+                BlockPos next = entry.pos().relative(direction);
+                if (!inside(next, graphMinX, graphMinY, graphMinZ, graphMaxX, graphMaxY, graphMaxZ)) {
+                    continue;
+                }
+                if (!level.isLoaded(next)) {
+                    result.complete = false;
+                    continue;
+                }
+                if (!isPassable(level, next) && !isCore(level, next)) {
+                    continue;
+                }
+                int nextLevel = Math.max(entry.level(), next.getY() + 1);
+                if (nextLevel < escapeLevel.getOrDefault(next, Integer.MAX_VALUE)) {
+                    BlockPos immutable = next.immutable();
+                    escapeLevel.put(immutable, nextLevel);
+                    priority.add(new EscapeEntry(nextLevel, immutable));
+                }
+            }
+        }
+        Set<BlockPos> preferredCells = new HashSet<>();
+        if (preferredCoreBases != null) {
+            for (BlockPos preferred : preferredCoreBases) {
+                if (preferred == null || !level.isLoaded(preferred)) {
+                    continue;
+                }
+                BlockPos base = BshuBlockEntity.componentBase(level, preferred);
+                if (base != null) {
+                    for (int i = 0; i < 3; i++) {
+                        preferredCells.add(base.above(i).immutable());
+                    }
+                }
+            }
+        }
+        Set<BlockPos> visited = new HashSet<>();
+        Set<BlockPos> bestPassable = null;
+        Set<BlockPos> bestCore = null;
+        int bestPreferred = -1;
+        int bestSupported = -1;
+        int bestSize = -1;
+        for (BlockPos start : escapeLevel.keySet()) {
+            if (!inside(start, result.hullMinX, result.hullMinY, result.hullMinZ, result.hullMaxX, result.hullMaxY, result.hullMaxZ)
+                    || visited.contains(start)
+                    || escapeLevel.getOrDefault(start, Integer.MAX_VALUE) <= start.getY() + 1) {
+                continue;
+            }
+            Set<BlockPos> passable = new HashSet<>();
+            Set<BlockPos> core = new HashSet<>();
+            Queue<BlockPos> queue = new ArrayDeque<>();
+            visited.add(start);
+            queue.add(start);
+            if (isCore(level, start)) {
+                core.add(start);
+            } else {
+                passable.add(start);
+            }
+            while (!queue.isEmpty()) {
+                BlockPos current = queue.remove();
+                for (Direction direction : Direction.values()) {
+                    BlockPos next = current.relative(direction);
+                    if (!inside(next, result.hullMinX, result.hullMinY, result.hullMinZ, result.hullMaxX, result.hullMaxY, result.hullMaxZ)
+                            || visited.contains(next)
+                            || !escapeLevel.containsKey(next)
+                            || escapeLevel.getOrDefault(next, Integer.MAX_VALUE) <= next.getY() + 1) {
+                        continue;
+                    }
+                    BlockPos immutable = next.immutable();
+                    visited.add(immutable);
+                    queue.add(immutable);
+                    if (isCore(level, immutable)) {
+                        core.add(immutable);
+                    } else {
+                        passable.add(immutable);
+                    }
+                }
+            }
+            int preferred = 0;
+            for (BlockPos cell : core) {
+                if (preferredCells.contains(cell)) {
+                    preferred++;
+                }
+            }
+            int supported = 0;
+            for (BlockPos cell : passable) {
+                if (isHull(level, cell.below())) {
+                    supported++;
+                }
+            }
+            int size = passable.size() + core.size();
+            boolean better = bestPassable == null
+                    || preferred > bestPreferred
+                    || (preferred == bestPreferred && supported > bestSupported)
+                    || (preferred == bestPreferred && supported == bestSupported && size > bestSize);
+            if (better) {
+                bestPassable = passable;
+                bestCore = core;
+                bestPreferred = preferred;
+                bestSupported = supported;
+                bestSize = size;
+            }
+        }
+        if (bestPassable == null || bestCore == null || (bestPassable.isEmpty() && bestCore.isEmpty())) {
+            return false;
+        }
+        result.cavity.addAll(bestPassable);
+        result.coreCells.addAll(bestCore);
+        expandShellFromBoundary(level, result);
+        Set<BlockPos> basin = new HashSet<>(bestPassable);
+        basin.addAll(bestCore);
+        int spillLevel = Integer.MAX_VALUE;
+        for (BlockPos pos : basin) {
+            spillLevel = Math.min(spillLevel, escapeLevel.getOrDefault(pos, Integer.MAX_VALUE));
+        }
+        boolean foundLeak = false;
+        Queue<BlockPos> spillQueue = new ArrayDeque<>(basin);
+        Set<BlockPos> spillVisited = new HashSet<>(basin);
+        while (!spillQueue.isEmpty() && !foundLeak) {
+            BlockPos current = spillQueue.remove();
+            for (Direction direction : Direction.values()) {
+                BlockPos next = current.relative(direction);
+                if (!inside(next, result.hullMinX, result.hullMinY, result.hullMinZ, result.hullMaxX, result.hullMaxY, result.hullMaxZ)) {
+                    if (isPassable(level, next) || isCore(level, next)) {
+                        addLeak(result, next.immutable(), direction);
+                        foundLeak = true;
+                        break;
+                    }
+                    continue;
+                }
+                if (!inside(next, graphMinX, graphMinY, graphMinZ, graphMaxX, graphMaxY, graphMaxZ)
+                        || spillVisited.contains(next)
+                        || (!isPassable(level, next) && !isCore(level, next))) {
+                    continue;
+                }
+                if (next.getY() < spillLevel && escapeLevel.getOrDefault(next, Integer.MAX_VALUE) <= spillLevel) {
+                    BlockPos immutable = next.immutable();
+                    spillVisited.add(immutable);
+                    spillQueue.add(immutable);
+                }
+            }
+        }
+        if (!foundLeak) {
+            for (BlockPos pos : basin) {
+                for (Direction direction : Direction.values()) {
+                    BlockPos next = pos.relative(direction);
+                    if (!basin.contains(next) && (isPassable(level, next) || isCore(level, next))) {
+                        addLeak(result, next.immutable(), direction);
+                        foundLeak = true;
+                        break;
+                    }
+                }
+                if (foundLeak) {
+                    break;
+                }
+            }
+        }
+        result.sealed = false;
+        return true;
+    }
+
+    private record EscapeEntry(int level, BlockPos pos) {
+    }
+
+    private static void fillOpenBasinFallback(ServerLevel level, Result result, Set<BlockPos> exterior, Collection<BlockPos> preferredCoreBases) {
         int minX = result.hullMinX;
         int minY = result.hullMinY;
         int minZ = result.hullMinZ;
