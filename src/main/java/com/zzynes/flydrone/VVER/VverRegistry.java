@@ -63,6 +63,16 @@ public class VverRegistry {
     public static final RegistryObject<BlockEntityType<BshuBlockEntity>> BSHU_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("vver_bshu", () -> BlockEntityType.Builder.of(BshuBlockEntity::new, BSHU_BLOCK.get()).build(null));
 
+    public static final RegistryObject<Block> GCN_BLOCK =
+            BLOCKS.register("vver_gcn", GcnBlock::new);
+
+    public static final RegistryObject<Item> GCN_ITEM =
+            ITEMS.register("vver_gcn", () -> new GcnBlockItem(GCN_BLOCK.get()));
+
+    @SuppressWarnings("ConstantConditions")
+    public static final RegistryObject<BlockEntityType<GcnBlockEntity>> GCN_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("vver_gcn", () -> BlockEntityType.Builder.of(GcnBlockEntity::new, GCN_BLOCK.get()).build(null));
+
     public static final RegistryObject<Block> HULL_WALL_BLOCK =
             BLOCKS.register("vver_reactor_hull", () -> new HullBlock(HullType.WALL));
 
@@ -127,6 +137,7 @@ public class VverRegistry {
             );
             if (event.getTabKey().equals(flyDroneTab)) {
                 event.accept(BSHU_ITEM.get());
+                event.accept(GCN_ITEM.get());
                 event.accept(HULL_WALL_ITEM.get());
                 event.accept(HULL_BOTTOM_ITEM.get());
                 event.accept(HULL_LID_ITEM.get());

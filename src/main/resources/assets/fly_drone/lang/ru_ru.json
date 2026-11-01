@@ -48,6 +48,7 @@
   "block.fly_drone.vver_suz": "СУЗ ВВЭР",
   "block.fly_drone.vver_tvs": "ТВС ВВЭР",
   "block.fly_drone.vver_bshu": "БЩУ ВВЭР",
+  "block.fly_drone.vver_gcn": "Главный циркуляционный насос ВВЭР",
   "block.fly_drone.vver_reactor_hull": "Стенка корпуса реактора",
   "block.fly_drone.vver_reactor_hull_bottom": "Днище корпуса реактора",
   "block.fly_drone.vver_reactor_hull_lid": "Крышка корпуса реактора",
