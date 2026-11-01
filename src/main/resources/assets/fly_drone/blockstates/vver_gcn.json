@@ -1,15 +1,39 @@
 {
   "variants": {
-    "facing=north": {
+    "facing=north,part=0": {
       "model": "fly_drone:block/vver_gcn"
     },
-    "facing=south": {
+    "facing=north,part=1": {
       "model": "fly_drone:block/vver_gcn"
     },
-    "facing=west": {
+    "facing=north,part=2": {
       "model": "fly_drone:block/vver_gcn"
     },
-    "facing=east": {
+    "facing=south,part=0": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=south,part=1": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=south,part=2": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=west,part=0": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=west,part=1": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=west,part=2": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=east,part=0": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=east,part=1": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=east,part=2": {
       "model": "fly_drone:block/vver_gcn"
     }
   }

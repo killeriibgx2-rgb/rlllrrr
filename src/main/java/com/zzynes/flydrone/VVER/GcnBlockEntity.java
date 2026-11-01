@@ -1,6 +1,7 @@
 package com.zzynes.flydrone.VVER;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -13,9 +14,16 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class GcnBlockEntity extends BlockEntity implements GeoBlockEntity {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private boolean partsChecked;
 
     public GcnBlockEntity(BlockPos pos, BlockState state) {
         super(VverRegistry.GCN_BLOCK_ENTITY.get(), pos, state);
+    }
+
+    public static void tick(Level level, BlockPos pos, BlockState state, GcnBlockEntity blockEntity) {
+        if (!level.isClientSide && !blockEntity.partsChecked) {
+            blockEntity.partsChecked = GcnBlock.placeParts(level, pos, state, false);
+        }
     }
 
     @Override
