@@ -1,4 +1,4 @@
-package com.zzynes.flydrone.WATER;
+package com.zzynes.flydrone.WATER.mixin;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
