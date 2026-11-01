@@ -73,6 +73,16 @@ public class VverRegistry {
     public static final RegistryObject<BlockEntityType<GcnBlockEntity>> GCN_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("vver_gcn", () -> BlockEntityType.Builder.of(GcnBlockEntity::new, GCN_BLOCK.get()).build(null));
 
+    public static final RegistryObject<Block> STEAM_GENERATOR_BLOCK =
+            BLOCKS.register("vver_steam_generator", SteamGeneratorBlock::new);
+
+    public static final RegistryObject<Item> STEAM_GENERATOR_ITEM =
+            ITEMS.register("vver_steam_generator", () -> new SteamGeneratorBlockItem(STEAM_GENERATOR_BLOCK.get()));
+
+    @SuppressWarnings("ConstantConditions")
+    public static final RegistryObject<BlockEntityType<SteamGeneratorBlockEntity>> STEAM_GENERATOR_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("vver_steam_generator", () -> BlockEntityType.Builder.of(SteamGeneratorBlockEntity::new, STEAM_GENERATOR_BLOCK.get()).build(null));
+
     public static final RegistryObject<Block> HULL_WALL_BLOCK =
             BLOCKS.register("vver_reactor_hull", () -> new HullBlock(HullType.WALL));
 
@@ -124,6 +134,9 @@ public class VverRegistry {
     public static final RegistryObject<Item> CORE_FILLER_ITEM =
             ITEMS.register("vver_core_filler", CoreFillerItem::new);
 
+    public static final RegistryObject<Item> PRESSURE_STICK_ITEM =
+            ITEMS.register("vver_pressure_stick", PressureStickItem::new);
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
         ITEMS.register(eventBus);
@@ -138,6 +151,7 @@ public class VverRegistry {
             if (event.getTabKey().equals(flyDroneTab)) {
                 event.accept(BSHU_ITEM.get());
                 event.accept(GCN_ITEM.get());
+                event.accept(STEAM_GENERATOR_ITEM.get());
                 event.accept(HULL_WALL_ITEM.get());
                 event.accept(HULL_BOTTOM_ITEM.get());
                 event.accept(HULL_LID_ITEM.get());
@@ -147,6 +161,7 @@ public class VverRegistry {
                 event.accept(TEE_PIPE_ITEM.get());
                 event.accept(CROSS_PIPE_ITEM.get());
                 event.accept(CORE_FILLER_ITEM.get());
+                event.accept(PRESSURE_STICK_ITEM.get());
             }
         });
     }

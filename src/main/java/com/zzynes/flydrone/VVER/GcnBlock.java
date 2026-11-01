@@ -62,6 +62,19 @@ public class GcnBlock extends BaseEntityBlock {
         return state.getValue(FACING).getOpposite();
     }
 
+    public static boolean hasFluidPort(BlockState state, Direction towardNeighbor) {
+        if (!(state.getBlock() instanceof GcnBlock)) {
+            return false;
+        }
+        int part = state.getValue(PART);
+        return part == PART_FRONT
+                && (towardNeighbor == inletDirection(state) || towardNeighbor == outletDirection(state));
+    }
+
+    public static BlockPos fluidMainPos(BlockPos pos, BlockState state) {
+        return mainPos(pos, state);
+    }
+
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING, PART);

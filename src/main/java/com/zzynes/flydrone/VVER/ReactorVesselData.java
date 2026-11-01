@@ -250,6 +250,25 @@ public class ReactorVesselData extends SavedData {
         return changed;
     }
 
+    public double adjustPressure(Vessel vessel, double deltaAtm) {
+        if (vessel == null || vessel.capacity <= 0.0 || !vessel.sealed || deltaAtm == 0.0) {
+            return 0.0;
+        }
+        double before = vessel.pressure;
+        double target = clampPressure(before + deltaAtm);
+        double gas = gasVolume(vessel);
+        if (gas > 0.000001) {
+            double saturation = saturationPressureAtm(vessel.temperature);
+            vessel.gasAmount = Math.max(0.01, (target - saturation) * gas);
+        } else {
+            double compressionPressure = HYDRAULIC_STIFFNESS * vessel.compression / Math.max(1.0, vessel.capacity);
+            vessel.fullPressure = Mth.clamp(target - compressionPressure, 0.03, 250.0);
+        }
+        recalculateSealedPressure(vessel);
+        setDirty();
+        return vessel.pressure - before;
+    }
+
     public void tick(ServerLevel level) {
         tickBursts(level);
         long gameTime = level.getGameTime();
@@ -555,7 +574,7 @@ public class ReactorVesselData extends SavedData {
         return best;
     }
 
-    private Vessel findByShell(BlockPos pos) {
+    public Vessel findByShell(BlockPos pos) {
         long packed = pos.asLong();
         for (Vessel vessel : this.vessels) {
             if (vessel.shellPositions.contains(packed)) {

@@ -15,11 +15,24 @@ final class PipePorts {
     private PipePorts() {
     }
 
-    static boolean connectsToward(BlockState state, Direction towardNeighborCell) {
-        if (PipeBlock.hasPort(state, towardNeighborCell)
+    static boolean isPipe(BlockState state) {
+        return state.getBlock() instanceof PipeBlock
+                || state.getBlock() instanceof CornerPipeBlock
+                || state.getBlock() instanceof TeePipeBlock
+                || state.getBlock() instanceof CrossPipeBlock;
+    }
+
+    static boolean hasPipePort(BlockState state, Direction towardNeighborCell) {
+        return PipeBlock.hasPort(state, towardNeighborCell)
                 || CornerPipeBlock.hasPort(state, towardNeighborCell)
                 || TeePipeBlock.hasPort(state, towardNeighborCell)
-                || CrossPipeBlock.hasPort(state, towardNeighborCell)) {
+                || CrossPipeBlock.hasPort(state, towardNeighborCell);
+    }
+
+    static boolean connectsToward(BlockState state, Direction towardNeighborCell) {
+        if (hasPipePort(state, towardNeighborCell)
+                || SteamGeneratorBlock.hasPort(state, towardNeighborCell)
+                || GcnBlock.hasFluidPort(state, towardNeighborCell)) {
             return true;
         }
         return state.getBlock() instanceof HullNozzleBlock

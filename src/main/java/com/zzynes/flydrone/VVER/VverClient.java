@@ -58,5 +58,6 @@ public class VverClient {
         event.registerBlockEntityRenderer(VverRegistry.SUZ_BLOCK_ENTITY.get(), SuzBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(VverRegistry.BSHU_BLOCK_ENTITY.get(), BshuBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(VverRegistry.GCN_BLOCK_ENTITY.get(), GcnBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(VverRegistry.STEAM_GENERATOR_BLOCK_ENTITY.get(), SteamGeneratorBlockEntityRenderer::new);
     }
 }
