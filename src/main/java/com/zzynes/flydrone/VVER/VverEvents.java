@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -29,6 +30,31 @@ public class VverEvents {
         }
         for (ServerLevel level : event.getServer().getAllLevels()) {
             ReactorVesselData.get(level).tick(level);
+            if (level.getGameTime() % 100L == 0L) {
+                PipePressureData.get(level).cleanup(level);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onBlockBreak(BlockEvent.BreakEvent event) {
+        if (!(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        BlockState state = event.getState();
+        PipePressureData data = PipePressureData.get(level);
+        if (PipePorts.isPipe(state)) {
+            data.removePipePressure(event.getPos());
+        }
+        if (state.getBlock() instanceof GcnBlock) {
+            data.removeEndpointPressure(GcnBlock.fluidMainPos(event.getPos(), state));
+        }
+    }
+
+    @SubscribeEvent
+    public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
+        if (event.getLevel() instanceof ServerLevel level && PipePorts.isPipe(event.getPlacedBlock())) {
+            PipePressureData.get(level).removePipePressure(event.getPos());
         }
     }
 
