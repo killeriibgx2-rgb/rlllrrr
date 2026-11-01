@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=south": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=west": {
+      "model": "fly_drone:block/vver_gcn"
+    },
+    "facing=east": {
+      "model": "fly_drone:block/vver_gcn"
+    }
+  }
+}
