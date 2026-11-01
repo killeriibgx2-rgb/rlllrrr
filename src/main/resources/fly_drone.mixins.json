@@ -1,19 +1,21 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.zzynes.flydrone.mixin",
+  "package": "com.zzynes.flydrone",
   "compatibilityLevel": "JAVA_17",
   "plugin": "com.zzynes.flydrone.mixin.FlyDroneMixinPlugin",
   "refmap": "fly_drone-refmap.json",
   "mixins": [
-    "ChunkMapMixin",
-    "TrackedEntityMixin"
+    "mixin.ChunkMapMixin",
+    "mixin.TrackedEntityMixin",
+    "WATER.FlowingFluidAccess",
+    "WATER.FlowingFluidMixin"
   ],
   "client": [
-    "LevelRendererMixin",
-    "LevelRendererVanillaOriginMixin",
-    "CameraMixin",
-    "ClientPacketListenerMixin"
+    "mixin.LevelRendererMixin",
+    "mixin.LevelRendererVanillaOriginMixin",
+    "mixin.CameraMixin",
+    "mixin.ClientPacketListenerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
