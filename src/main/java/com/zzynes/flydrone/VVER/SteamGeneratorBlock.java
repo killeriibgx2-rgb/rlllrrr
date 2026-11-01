@@ -38,7 +38,7 @@ public class SteamGeneratorBlock extends BaseEntityBlock {
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
     public static final IntegerProperty PART = IntegerProperty.create("part", 0, 44);
     public static final int PART_COUNT = 45;
-    public static final int MAIN_PART = 4;
+    public static final int MAIN_PART = 1;
     public static final int HEIGHT = 5;
 
     public SteamGeneratorBlock() {
@@ -68,11 +68,11 @@ public class SteamGeneratorBlock extends BaseEntityBlock {
     }
 
     public static int partIndex(int frontOffset, int height, int sideOffset) {
-        return height * 9 + (frontOffset + 1) * 3 + sideOffset + 1;
+        return height * 9 - frontOffset * 3 + sideOffset + 1;
     }
 
     public static int frontOffset(int part) {
-        return (part % 9) / 3 - 1;
+        return -((part % 9) / 3);
     }
 
     public static int sideOffset(int part) {
@@ -126,13 +126,13 @@ public class SteamGeneratorBlock extends BaseEntityBlock {
         int side = sideOffset(part);
         int height = height(part);
         Direction facing = state.getValue(FACING);
-        if (height == 0 && front == 1 && side != 0) {
+        if (height == 0 && front == 0 && side != 0) {
             return new PortSpec(facing, Circuit.PRIMARY);
         }
-        if (height == 0 && front == -1 && side == 0) {
+        if (height == 0 && front == -2 && side == 0) {
             return new PortSpec(facing.getOpposite(), Circuit.SECONDARY);
         }
-        if (height == HEIGHT - 1 && front == 0 && side == 0) {
+        if (height == HEIGHT - 1 && front == -1 && side == 0) {
             return new PortSpec(Direction.UP, Circuit.SECONDARY);
         }
         return null;

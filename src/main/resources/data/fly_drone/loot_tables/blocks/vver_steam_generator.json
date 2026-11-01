@@ -17,7 +17,7 @@
           "condition": "minecraft:block_state_property",
           "block": "fly_drone:vver_steam_generator",
           "properties": {
-            "part": "4"
+            "part": "1"
           }
         }
       ]

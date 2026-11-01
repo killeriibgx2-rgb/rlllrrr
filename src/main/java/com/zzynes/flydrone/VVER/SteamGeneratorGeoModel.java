@@ -14,7 +14,7 @@ public class SteamGeneratorGeoModel<T extends GeoAnimatable> extends GeoModel<T>
     private static final ResourceLocation MODEL = new ResourceLocation(FlyDroneMod.MOD_ID, "geo/block/steam_generator.geo.json");
     private static final ResourceLocation TEXTURE = new ResourceLocation(FlyDroneMod.MOD_ID, "textures/block/steam_generator.png");
     private static final ResourceLocation ANIMATIONS = new ResourceLocation(FlyDroneMod.MOD_ID, "animations/block/steam_generator.animation.json");
-    private static final double NEEDLE_SWEEP_DEGREES = 210.0;
+    private static final double NEEDLE_SWEEP_DEGREES = 270.0;
 
     @Override
     public ResourceLocation getModelResource(T animatable) {
