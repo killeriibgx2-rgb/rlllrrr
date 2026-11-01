@@ -13,6 +13,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 
@@ -421,7 +422,7 @@ public final class FiniteWaterManager {
             }
             return;
         }
-        if (level.getFluidState(pos).isFalling()) {
+        if (level.getFluidState(pos).getValue(FlowingFluid.FALLING)) {
             setUnits(level, pos, units, null, session);
         }
         if (tryFlowDown(level, pos, units, session)) {
