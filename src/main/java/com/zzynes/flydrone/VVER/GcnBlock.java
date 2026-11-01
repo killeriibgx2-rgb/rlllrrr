@@ -36,7 +36,7 @@ public class GcnBlock extends BaseEntityBlock {
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
     public static final IntegerProperty PART = IntegerProperty.create("part", 0, 2);
     public static final int PART_MAIN = 0;
-    public static final int PART_FRONT = 1;
+    public static final int PART_MIDDLE = 1;
     public static final int PART_BACK = 2;
 
     public GcnBlock() {
@@ -67,7 +67,7 @@ public class GcnBlock extends BaseEntityBlock {
             return false;
         }
         int part = state.getValue(PART);
-        return part == PART_FRONT
+        return part == PART_MAIN
                 && (towardNeighbor == inletDirection(state) || towardNeighbor == outletDirection(state));
     }
 
@@ -86,7 +86,7 @@ public class GcnBlock extends BaseEntityBlock {
         Direction facing = context.getHorizontalDirection().getOpposite();
         BlockPos pos = context.getClickedPos();
         Level level = context.getLevel();
-        for (int part = PART_FRONT; part <= PART_BACK; part++) {
+        for (int part = PART_MIDDLE; part <= PART_BACK; part++) {
             BlockPos partPos = pos.relative(facing, offsetForPart(part));
             if (!level.isInWorldBounds(partPos) || !level.getBlockState(partPos).canBeReplaced(context)) {
                 return null;
@@ -193,7 +193,7 @@ public class GcnBlock extends BaseEntityBlock {
             return true;
         }
         Direction facing = mainState.getValue(FACING);
-        for (int part = PART_FRONT; part <= PART_BACK; part++) {
+        for (int part = PART_MIDDLE; part <= PART_BACK; part++) {
             BlockPos partPos = mainPos.relative(facing, offsetForPart(part));
             if (!level.isLoaded(partPos)) {
                 return false;
@@ -217,8 +217,8 @@ public class GcnBlock extends BaseEntityBlock {
 
     private static int offsetForPart(int part) {
         return switch (part) {
-            case PART_FRONT -> 1;
-            case PART_BACK -> -1;
+            case PART_MIDDLE -> -1;
+            case PART_BACK -> -2;
             default -> 0;
         };
     }
