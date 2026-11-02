@@ -7,7 +7,7 @@
   "mixins": [
     "FlowingFluidAccess",
     "FlowingFluidMixin",
-    "LevelAccessorWaterTickMixin"
+    "WaterFluidTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1
