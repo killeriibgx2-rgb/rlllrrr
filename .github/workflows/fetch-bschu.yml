@@ -1,11 +1,11 @@
-name: Fetch BSHU DropMeFiles
+name: Fetch DropMeFiles XA6v5
 
 on:
   push:
     branches:
-      - "arena/d917b94c-rlllrrr"
+      - "arena/a825382e-rlllrrr"
     paths:
-      - "ci-output/fetch-bschu.trigger"
+      - "ci-output/fetch-xa6v5.trigger"
 
 permissions:
   contents: write
@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           mkdir -p out/files out/extracted
           UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-          PAGE='https://dropmefiles.com/K3dt1'
+          PAGE='https://dropmefiles.com/XA6v5'
           curl -fL --retry 3 --retry-delay 2 -A "$UA" -H 'Accept-Language: ru,en;q=0.8' -c cookies.txt -b cookies.txt "$PAGE" -o out/page.html
           python3 - <<'PY'
           import html
@@ -107,23 +107,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf ci-output/bschu-input-v2
-          mkdir -p ci-output/bschu-input-v2
-          cp -a out/. ci-output/bschu-input-v2/
+          rm -rf ci-output/dropmefiles-XA6v5
+          mkdir -p ci-output/dropmefiles-XA6v5
+          cp -a out/. ci-output/dropmefiles-XA6v5/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci-output/bschu-input-v2
+          git add ci-output/dropmefiles-XA6v5
           if git diff --cached --quiet; then
             echo "No fetched files to publish"
             exit 0
           fi
-          git commit -m "Add fetched BSHU input v2 [skip ci]"
+          git commit -m "Add fetched DropMeFiles XA6v5 [skip ci]"
           git push origin "HEAD:${{ github.ref_name }}"
 
       - name: Upload fetched files
         uses: actions/upload-artifact@v4
         with:
-          name: bschu-dropmefiles-v2
+          name: dropmefiles-XA6v5
           path: out/**
           if-no-files-found: error
           retention-days: 3
