@@ -23,13 +23,23 @@ final class PipePorts {
     }
 
     static boolean hasPipePort(BlockState state, Direction towardNeighborCell) {
+        if (state.getBlock() instanceof ValveBlock) {
+            return ValveBlock.hasPort(state, towardNeighborCell);
+        }
         return PipeBlock.hasPort(state, towardNeighborCell)
                 || CornerPipeBlock.hasPort(state, towardNeighborCell)
                 || TeePipeBlock.hasPort(state, towardNeighborCell)
                 || CrossPipeBlock.hasPort(state, towardNeighborCell);
     }
 
+    static boolean isClosedValve(BlockState state) {
+        return state.getBlock() instanceof ValveBlock && !state.getValue(ValveBlock.OPEN);
+    }
+
     static boolean connectsToward(BlockState state, Direction towardNeighborCell) {
+        if (state.getBlock() instanceof ValveBlock) {
+            return ValveBlock.hasPhysicalPort(state, towardNeighborCell);
+        }
         if (hasPipePort(state, towardNeighborCell)
                 || SteamGeneratorBlock.hasPort(state, towardNeighborCell)
                 || GcnBlock.hasFluidPort(state, towardNeighborCell)) {
