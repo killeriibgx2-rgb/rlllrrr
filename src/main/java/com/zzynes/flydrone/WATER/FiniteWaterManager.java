@@ -509,7 +509,9 @@ public final class FiniteWaterManager {
         if (level.getFluidState(pos).getValue(FlowingFluid.FALLING)) {
             setUnits(level, pos, units, null, session);
         }
-        if (session.memory.equalizedAt.get(pos.asLong()) == level.getGameTime()) {
+        long now = level.getGameTime();
+        if (session.memory.equalizedAt.get(pos.asLong()) == now
+                || session.memory.flowOutAt.get(pos.asLong()) == now) {
             schedule(level, pos);
             return;
         }
@@ -525,6 +527,12 @@ public final class FiniteWaterManager {
         tryEqualizeSurface(level, pos, session);
     }
 
+    private static boolean changedByFlowThisTick(Session session, long key, long now) {
+        return session.memory.equalizedAt.get(key) == now
+                || session.memory.flowInAt.get(key) == now
+                || session.memory.flowOutAt.get(key) == now;
+    }
+
     private static boolean tryEqualizeSurface(Level level, BlockPos pos, Session session) {
         if (volumeAt(level, pos.above(), session, false) > 0) {
             return false;
@@ -535,6 +543,10 @@ public final class FiniteWaterManager {
             return false;
         }
         long now = level.getGameTime();
+        if (changedByFlowThisTick(session, pos.asLong(), now)) {
+            schedule(level, pos, 1);
+            return false;
+        }
         long cooldownUntil = session.memory.equalizationCooldown.get(pos.asLong());
         if (cooldownUntil > now) {
             long remaining = cooldownUntil - now;
@@ -558,7 +570,7 @@ public final class FiniteWaterManager {
             return false;
         }
         for (long key : fluids.keySet()) {
-            if (key != pos.asLong() && session.memory.equalizedAt.get(key) == now) {
+            if (key != pos.asLong() && changedByFlowThisTick(session, key, now)) {
                 schedule(level, pos, 1);
                 return false;
             }
@@ -750,21 +762,59 @@ public final class FiniteWaterManager {
         }
         donors.sort((a, b) -> Integer.compare(fluids.get(b) - target.get(b), fluids.get(a) - target.get(a)));
         receivers.sort((a, b) -> Integer.compare(target.get(b) - fluids.get(b), target.get(a) - fluids.get(a)));
-        int pairs = Math.min(EQUALIZE_MAX_MOVES, Math.min(donors.size(), receivers.size()));
-        for (int i = 0; i < pairs; i++) {
-            long donor = donors.get(i);
-            long receiver = receivers.get(i);
-            int amount = Math.min(MILLIBUCKETS_PER_UNIT, Math.min(desired.get(donor) - target.get(donor), target.get(receiver) - desired.get(receiver)));
-            if (amount <= 0 || fluids.get(receiver) == 0 && amount < MILLIBUCKETS_PER_UNIT) {
+        int moves = 0;
+        int donorIndex = 0;
+        int donorBudget = 0;
+        for (long receiver : receivers) {
+            if (moves >= EQUALIZE_MAX_MOVES) {
+                break;
+            }
+            int receiverNeed = target.get(receiver) - desired.get(receiver);
+            if (receiverNeed <= 0) {
                 continue;
             }
-            int donorNext = desired.get(donor) - amount;
-            if (donorNext <= 0) {
-                desired.remove(donor);
-            } else {
-                desired.put(donor, donorNext);
+            boolean dryReceiver = fluids.get(receiver) == 0;
+            if (dryReceiver && receiverNeed < MILLIBUCKETS_PER_UNIT) {
+                continue;
             }
-            desired.put(receiver, desired.get(receiver) + amount);
+            int receiverBudget = Math.min(MILLIBUCKETS_PER_UNIT, receiverNeed);
+            while (receiverBudget > 0 && donorIndex < donors.size() && moves < EQUALIZE_MAX_MOVES) {
+                long donor = donors.get(donorIndex);
+                int donorAvailable = desired.get(donor) - target.get(donor);
+                if (donorAvailable <= 0) {
+                    donorIndex++;
+                    donorBudget = 0;
+                    continue;
+                }
+                if (donorBudget <= 0) {
+                    donorBudget = Math.min(MILLIBUCKETS_PER_UNIT, donorAvailable);
+                }
+                if (dryReceiver && donorBudget < MILLIBUCKETS_PER_UNIT) {
+                    donorIndex++;
+                    donorBudget = 0;
+                    continue;
+                }
+                int amount = Math.min(receiverBudget, Math.min(donorAvailable, donorBudget));
+                if (amount <= 0) {
+                    donorIndex++;
+                    donorBudget = 0;
+                    continue;
+                }
+                int donorNext = desired.get(donor) - amount;
+                if (donorNext <= 0) {
+                    desired.remove(donor);
+                } else {
+                    desired.put(donor, donorNext);
+                }
+                desired.put(receiver, desired.get(receiver) + amount);
+                receiverBudget -= amount;
+                donorBudget -= amount;
+                moves++;
+                if (donorBudget <= 0 || desired.get(donor) - target.get(donor) <= 0) {
+                    donorIndex++;
+                    donorBudget = 0;
+                }
+            }
         }
         return desired;
     }
@@ -848,12 +898,14 @@ public final class FiniteWaterManager {
 
     private static boolean tryFlowSideways(Level level, BlockPos pos, int units, Session session) {
         int ownHead = columnHead(level, pos, session);
-        int ownDistanceToEmpty = -1;
+        int ownDistanceToSink = -1;
         List<FlowCandidate> candidates = new ArrayList<>();
         boolean retryNextTick = false;
+        long now = level.getGameTime();
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos target = pos.relative(direction);
-            if (session.memory.equalizedAt.get(target.asLong()) == level.getGameTime()) {
+            if (session.memory.equalizedAt.get(target.asLong()) == now
+                    || session.memory.flowOutAt.get(target.asLong()) == now) {
                 retryNextTick = true;
                 continue;
             }
@@ -864,16 +916,16 @@ public final class FiniteWaterManager {
             if (targetUnits >= MAX_UNITS) {
                 continue;
             }
-            int targetHead = targetUnits > 0 ? columnHead(level, target, session) : 0;
+            int targetHead = sideTargetHead(level, target, targetUnits, session);
             int difference = ownHead - targetHead;
             int requiredDifference = ownHead > units ? MILLIBUCKETS_PER_UNIT : 2 * MILLIBUCKETS_PER_UNIT;
             if (difference >= requiredDifference) {
                 candidates.add(new FlowCandidate(target.immutable(), direction, targetHead));
             } else if (difference >= MILLIBUCKETS_PER_UNIT && units > MILLIBUCKETS_PER_UNIT && targetUnits > 0) {
-                if (ownDistanceToEmpty < 0) {
-                    ownDistanceToEmpty = distanceToEmpty(level, pos, session);
+                if (ownDistanceToSink < 0) {
+                    ownDistanceToSink = distanceToSink(level, pos, session);
                 }
-                if (distanceToEmpty(level, target, session) < ownDistanceToEmpty) {
+                if (distanceToSink(level, target, session) < ownDistanceToSink) {
                     candidates.add(new FlowCandidate(target.immutable(), direction, targetHead));
                 }
             }
@@ -921,8 +973,25 @@ public final class FiniteWaterManager {
         return moved;
     }
 
-    private static int distanceToEmpty(Level level, BlockPos start, Session session) {
-        if (hasEmptyHorizontalNeighbor(level, start, session)) {
+    private static int sideTargetHead(Level level, BlockPos target, int targetUnits, Session session) {
+        BlockPos below = target.below();
+        if (canEnter(level, target, Direction.DOWN, below)) {
+            int belowUnits = volumeAt(level, below, session, false);
+            if (belowUnits < MAX_UNITS) {
+                return targetUnits + belowUnits - MAX_UNITS;
+            }
+        }
+        return targetUnits > 0 ? columnHead(level, target, session) : 0;
+    }
+
+    private static boolean canDrainDown(Level level, BlockPos pos, Session session) {
+        BlockPos below = pos.below();
+        return canEnter(level, pos, Direction.DOWN, below)
+                && volumeAt(level, below, session, false) < MAX_UNITS;
+    }
+
+    private static int distanceToSink(Level level, BlockPos start, Session session) {
+        if (hasSinkAccess(level, start, session)) {
             return 0;
         }
         LongOpenHashSet visited = new LongOpenHashSet();
@@ -941,7 +1010,7 @@ public final class FiniteWaterManager {
                             || volumeAt(level, neighbor, session, false) <= 0) {
                         continue;
                     }
-                    if (hasEmptyHorizontalNeighbor(level, neighbor, session)) {
+                    if (hasSinkAccess(level, neighbor, session)) {
                         return distance;
                     }
                     visited.add(neighborKey);
@@ -952,11 +1021,15 @@ public final class FiniteWaterManager {
         return Integer.MAX_VALUE;
     }
 
-    private static boolean hasEmptyHorizontalNeighbor(Level level, BlockPos pos, Session session) {
+    private static boolean hasSinkAccess(Level level, BlockPos pos, Session session) {
+        if (canDrainDown(level, pos, session)) {
+            return true;
+        }
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos target = pos.relative(direction);
             if (canEnter(level, pos, direction, target)
-                    && volumeAt(level, target, session, false) <= 0) {
+                    && (volumeAt(level, target, session, false) <= 0
+                    || canDrainDown(level, target, session))) {
                 return true;
             }
         }
@@ -976,7 +1049,8 @@ public final class FiniteWaterManager {
         }
         int aboveUnits = volumeAt(level, above, session, false);
         if (aboveUnits >= MAX_UNITS
-                || session.memory.equalizedAt.get(above.asLong()) == level.getGameTime()) {
+                || session.memory.equalizedAt.get(above.asLong()) == level.getGameTime()
+                || session.memory.flowOutAt.get(above.asLong()) == level.getGameTime()) {
             return false;
         }
         int ownHead = columnHead(level, pos, session);
@@ -987,7 +1061,8 @@ public final class FiniteWaterManager {
             BlockPos neighbor = pos.relative(direction);
             if (!level.isLoaded(neighbor)
                     || !isOpenWater(level, neighbor)
-                    || session.memory.equalizedAt.get(neighbor.asLong()) == level.getGameTime()) {
+                    || session.memory.equalizedAt.get(neighbor.asLong()) == level.getGameTime()
+                    || session.memory.flowOutAt.get(neighbor.asLong()) == level.getGameTime()) {
                 continue;
             }
             int neighborHead = columnHead(level, neighbor, session);
@@ -1013,6 +1088,9 @@ public final class FiniteWaterManager {
         setUnits(level, above, aboveUnits + move, Direction.UP, session);
         setUnits(level, bestPos, neighborUnits - move, bestDirection.getOpposite(), session);
         long now = level.getGameTime();
+        session.memory.flowInAt.put(above.asLong(), now);
+        session.memory.flowOutAt.put(pos.asLong(), now);
+        session.memory.flowOutAt.put(bestPos.asLong(), now);
         session.memory.equalizedAt.put(pos.asLong(), now);
         session.memory.equalizedAt.put(above.asLong(), now);
         session.memory.equalizedAt.put(bestPos.asLong(), now);
@@ -1032,8 +1110,8 @@ public final class FiniteWaterManager {
         setUnits(level, to, toUnits + units, direction, session);
         setUnits(level, from, fromUnits - units, direction.getOpposite(), session);
         long now = level.getGameTime();
-        session.memory.equalizedAt.put(from.asLong(), now);
-        session.memory.equalizedAt.put(to.asLong(), now);
+        session.memory.flowOutAt.put(from.asLong(), now);
+        session.memory.flowInAt.put(to.asLong(), now);
         if (direction == Direction.DOWN) {
             schedule(level, from);
             schedule(level, to);
