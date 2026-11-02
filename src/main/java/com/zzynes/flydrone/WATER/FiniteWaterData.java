@@ -65,11 +65,15 @@ public class FiniteWaterData extends SavedData {
         final Long2LongOpenHashMap largeCells = new Long2LongOpenHashMap();
         final Long2IntOpenHashMap volumes = new Long2IntOpenHashMap();
         final Long2LongOpenHashMap equalizedAt = new Long2LongOpenHashMap();
+        final Long2LongOpenHashMap equalizationCooldown = new Long2LongOpenHashMap();
+        long equalizationTaskTick = Long.MIN_VALUE;
+        int equalizationTasksThisTick;
 
         Memory() {
             this.largeCells.defaultReturnValue(Long.MIN_VALUE);
             this.volumes.defaultReturnValue(0);
             this.equalizedAt.defaultReturnValue(Long.MIN_VALUE);
+            this.equalizationCooldown.defaultReturnValue(Long.MIN_VALUE);
         }
     }
 }
