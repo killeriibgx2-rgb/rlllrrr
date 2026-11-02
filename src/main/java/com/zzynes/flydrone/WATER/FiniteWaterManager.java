@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -16,6 +17,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -29,7 +33,8 @@ import java.util.WeakHashMap;
 public final class FiniteWaterManager {
     public static final int BUCKET_UNITS = 10;
     public static final int MILLIBUCKETS_PER_UNIT = 100;
-    private static final int MAX_UNITS = BUCKET_UNITS * MILLIBUCKETS_PER_UNIT;
+    public static final int BUCKET_MILLIBUCKETS = BUCKET_UNITS * MILLIBUCKETS_PER_UNIT;
+    private static final int MAX_UNITS = BUCKET_MILLIBUCKETS;
     private static final int MAX_BODY_UNITS = 20000 * MILLIBUCKETS_PER_UNIT;
     private static final int MAX_SCAN_CELLS = 40000;
     private static final int EQUALIZE_STEPS = 16;
@@ -73,6 +78,20 @@ public final class FiniteWaterManager {
         return canAddWaterUnits(level, pos, units, false);
     }
 
+    public static boolean canAddWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
+        if (millibuckets <= 0 || !isOpenWater(level, pos)) {
+            return false;
+        }
+        Session session = session(level);
+        Long2IntOpenHashMap component = collectComponent(level, pos, session);
+        if (component == null) {
+            return false;
+        }
+        int requested = Math.min(millibuckets, BUCKET_MILLIBUCKETS);
+        Long2IntOpenHashMap planned = plannedAddExact(level, component, session, requested);
+        return componentTotal(planned) > componentTotal(component);
+    }
+
     private static boolean canAddWaterUnits(Level level, BlockPos pos, int units, boolean requireAll) {
         if (units <= 0 || !isOpenWater(level, pos)) {
             return false;
@@ -98,6 +117,16 @@ public final class FiniteWaterManager {
         return canPlaceIntoEmpty(level, pos);
     }
 
+    public static boolean canPlaceWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
+        if (millibuckets <= 0 || !level.isLoaded(pos)) {
+            return false;
+        }
+        if (isOpenWater(level, pos)) {
+            return canAddWaterMillibuckets(level, pos, millibuckets) || !isFiniteAt(level, pos);
+        }
+        return canPlaceIntoEmpty(level, pos);
+    }
+
     public static boolean tryAddBucket(Level level, BlockPos pos) {
         return tryAddWaterUnits(level, pos, BUCKET_UNITS) >= BUCKET_UNITS;
     }
@@ -113,6 +142,23 @@ public final class FiniteWaterManager {
         }
         Long2IntOpenHashMap planned = plannedAdd(level, component, session, Math.min(units, BUCKET_UNITS) * MILLIBUCKETS_PER_UNIT);
         int added = (componentTotal(planned) - componentTotal(component)) / MILLIBUCKETS_PER_UNIT;
+        if (added > 0) {
+            applyVolumes(level, component, planned, session);
+        }
+        return added;
+    }
+
+    public static int tryAddWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
+        if (level.isClientSide || millibuckets <= 0 || !isOpenWater(level, pos)) {
+            return 0;
+        }
+        Session session = session(level);
+        Long2IntOpenHashMap component = collectComponent(level, pos, session);
+        if (component == null) {
+            return 0;
+        }
+        Long2IntOpenHashMap planned = plannedAddExact(level, component, session, Math.min(millibuckets, BUCKET_MILLIBUCKETS));
+        int added = componentTotal(planned) - componentTotal(component);
         if (added > 0) {
             applyVolumes(level, component, planned, session);
         }
@@ -144,17 +190,51 @@ public final class FiniteWaterManager {
         return requested;
     }
 
+    public static int tryPlaceWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
+        if (level.isClientSide || millibuckets <= 0 || !level.isLoaded(pos)) {
+            return 0;
+        }
+        int requested = Math.min(millibuckets, BUCKET_MILLIBUCKETS);
+        if (isOpenWater(level, pos)) {
+            Session session = session(level);
+            BodyKind kind = classify(level, pos, session);
+            if (kind == BodyKind.LARGE) {
+                return requested;
+            }
+            if (kind != BodyKind.FINITE) {
+                return 0;
+            }
+            return tryAddWaterMillibuckets(level, pos, requested);
+        }
+        if (!canPlaceIntoEmpty(level, pos)) {
+            return 0;
+        }
+        Session session = session(level);
+        setUnits(level, pos, requested, null, session);
+        scheduleAround(level, pos);
+        return requested;
+    }
+
     public static boolean tryPickupBucket(Level level, BlockPos pos) {
         return tryPickupWaterUnits(level, pos, BUCKET_UNITS) >= BUCKET_UNITS;
     }
 
     public static int tryPickupWaterUnits(Level level, BlockPos pos, int maxUnits) {
-        if (level.isClientSide || maxUnits <= 0 || !isOpenWater(level, pos)) {
+        int requested = Math.min(maxUnits, BUCKET_UNITS) * MILLIBUCKETS_PER_UNIT;
+        return tryPickupWater(level, pos, requested, true) / MILLIBUCKETS_PER_UNIT;
+    }
+
+    public static int tryPickupWaterMillibuckets(Level level, BlockPos pos, int maxMillibuckets) {
+        return tryPickupWater(level, pos, maxMillibuckets, false);
+    }
+
+    private static int tryPickupWater(Level level, BlockPos pos, int maxMillibuckets, boolean wholePackets) {
+        if (level.isClientSide || maxMillibuckets <= 0 || !isOpenWater(level, pos)) {
             return 0;
         }
         Session session = session(level);
         BodyKind kind = classify(level, pos, session);
-        int requested = Math.min(maxUnits, BUCKET_UNITS);
+        int requested = Math.min(maxMillibuckets, BUCKET_MILLIBUCKETS);
         if (kind == BodyKind.LARGE) {
             return requested;
         }
@@ -165,7 +245,9 @@ public final class FiniteWaterManager {
         if (component == null) {
             return 0;
         }
-        int removeUnits = Math.min(requested * MILLIBUCKETS_PER_UNIT, componentTotal(component) / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT);
+        int total = componentTotal(component);
+        int available = wholePackets ? total / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT : total;
+        int removeUnits = Math.min(requested, available);
         if (removeUnits <= 0) {
             return 0;
         }
@@ -201,7 +283,43 @@ public final class FiniteWaterManager {
             remaining -= amount;
         }
         applyVolumes(level, component, desired, session);
-        return removeUnits / MILLIBUCKETS_PER_UNIT;
+        return removeUnits;
+    }
+
+    public static BlockPos findBucketPickupPos(Level level, Player player, BlockHitResult hit, boolean scanCells) {
+        if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
+            BlockPos hitPos = hit.getBlockPos();
+            if (isOpenWater(level, hitPos)) {
+                return hitPos.immutable();
+            }
+            BlockPos adjacent = hitPos.relative(hit.getDirection());
+            if (isOpenWater(level, adjacent)) {
+                return adjacent.immutable();
+            }
+        }
+        if (!scanCells) {
+            return null;
+        }
+        double reach = player.isCreative() ? 5.0D : 4.5D;
+        Vec3 eye = player.getEyePosition(1.0F);
+        Vec3 view = player.getViewVector(1.0F);
+        HitResult solidHit = player.pick(reach, 1.0F, false);
+        double limit = reach;
+        if (solidHit.getType() == HitResult.Type.BLOCK) {
+            limit = Math.min(limit, eye.distanceTo(solidHit.getLocation()) + 0.0625D);
+        }
+        BlockPos previous = null;
+        for (double distance = 0.0D; distance <= limit; distance += 0.0625D) {
+            BlockPos pos = BlockPos.containing(eye.add(view.scale(distance)));
+            if (pos.equals(previous)) {
+                continue;
+            }
+            previous = pos;
+            if (isOpenWater(level, pos)) {
+                return pos.immutable();
+            }
+        }
+        return null;
     }
 
     public static boolean handleTick(Level level, BlockPos pos, FluidState state) {
@@ -413,6 +531,50 @@ public final class FiniteWaterManager {
             } else {
                 break;
             }
+        }
+        return desired;
+    }
+
+    private static Long2IntOpenHashMap plannedAddExact(Level level, Long2IntOpenHashMap component, Session session, int millibucketsToAdd) {
+        int packetAmount = millibucketsToAdd / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT;
+        Long2IntOpenHashMap desired = plannedAdd(level, component, session, packetAmount);
+        int remaining = millibucketsToAdd - (componentTotal(desired) - componentTotal(component));
+        while (remaining > 0) {
+            long bestKey = 0L;
+            int bestSurface = Integer.MAX_VALUE;
+            boolean found = false;
+            for (long key : shuffledKeys(desired, level)) {
+                int units = desired.get(key);
+                if (units <= 0 || units >= MAX_UNITS) {
+                    continue;
+                }
+                int surface = surface(key, units);
+                if (!found || surface < bestSurface) {
+                    bestKey = key;
+                    bestSurface = surface;
+                    found = true;
+                }
+            }
+            if (found) {
+                int amount = Math.min(remaining, MAX_UNITS - desired.get(bestKey));
+                desired.put(bestKey, desired.get(bestKey) + amount);
+                remaining -= amount;
+                continue;
+            }
+            BlockPos bestExpansion = null;
+            int bestExpansionY = Integer.MAX_VALUE;
+            for (BlockPos expansion : expansionCandidates(level, desired, session)) {
+                if (expansion.getY() < bestExpansionY) {
+                    bestExpansion = expansion;
+                    bestExpansionY = expansion.getY();
+                }
+            }
+            if (bestExpansion == null) {
+                break;
+            }
+            int amount = Math.min(remaining, MAX_UNITS);
+            desired.put(bestExpansion.asLong(), amount);
+            remaining -= amount;
         }
         return desired;
     }
