@@ -32,6 +32,12 @@ public final class FiniteWaterManager {
     private static final int MAX_UNITS = 10;
     private static final int MAX_BODY_UNITS = 20000;
     private static final int MAX_SCAN_CELLS = 40000;
+    private static final int EQUALIZE_STEPS = 16;
+    private static final int EQUALIZE_MAX_CELLS = 512;
+    private static final int EQUALIZE_MAX_MOVES = 16;
+    private static final int EQUALIZE_TASKS_PER_TICK = 2;
+    private static final long EQUALIZE_COOLDOWN_TICKS = 10L;
+    private static final long EQUALIZE_CHANGED_COOLDOWN_TICKS = 4L;
     private static final int TICK_DELAY = 2;
     private static final long LARGE_HINT_TICKS = 100L;
     private static final Direction[] HORIZONTAL_DIRECTIONS = new Direction[]{Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
@@ -507,7 +513,222 @@ public final class FiniteWaterManager {
         if (tryFlowSideways(level, pos, units, session)) {
             return;
         }
-        tryPressureRise(level, pos, units, session);
+        if (tryPressureRise(level, pos, units, session)) {
+            return;
+        }
+        tryEqualizeSurface(level, pos, session);
+    }
+
+    private static boolean tryEqualizeSurface(Level level, BlockPos pos, Session session) {
+        if (volumeAt(level, pos.above(), session, false) > 0) {
+            return false;
+        }
+        BlockPos below = pos.below();
+        if (canEnter(level, pos, Direction.DOWN, below)
+                && volumeAt(level, below, session, false) < MAX_UNITS) {
+            return false;
+        }
+        long now = level.getGameTime();
+        long cooldownUntil = session.memory.equalizationCooldown.get(pos.asLong());
+        if (cooldownUntil > now) {
+            long remaining = cooldownUntil - now;
+            if (remaining <= EQUALIZE_CHANGED_COOLDOWN_TICKS) {
+                schedule(level, pos, (int) Math.max(1L, remaining));
+            }
+            return false;
+        }
+        if (session.memory.equalizationTaskTick != now) {
+            session.memory.equalizationTaskTick = now;
+            session.memory.equalizationTasksThisTick = 0;
+        }
+        if (session.memory.equalizationTasksThisTick >= EQUALIZE_TASKS_PER_TICK) {
+            schedule(level, pos, 2);
+            return false;
+        }
+        session.memory.equalizationTasksThisTick++;
+        Long2IntOpenHashMap fluids = collectEqualizationWindow(level, pos, session, now);
+        if (fluids == null || fluids.size() < 2) {
+            session.memory.equalizationCooldown.put(pos.asLong(), now + EQUALIZE_COOLDOWN_TICKS);
+            return false;
+        }
+        for (long key : fluids.keySet()) {
+            if (key != pos.asLong() && session.memory.equalizedAt.get(key) == now) {
+                schedule(level, pos, 1);
+                return false;
+            }
+        }
+        int y = pos.getY();
+        int upperCount = 0;
+        int lowerCount = 0;
+        int total = 0;
+        int min = MAX_UNITS;
+        int max = 0;
+        for (var entry : fluids.long2IntEntrySet()) {
+            BlockPos cell = BlockPos.of(entry.getLongKey());
+            int units = entry.getIntValue();
+            total += units;
+            if (cell.getY() == y) {
+                upperCount++;
+                min = Math.min(min, units);
+                max = Math.max(max, units);
+            } else if (cell.getY() == y - 1) {
+                lowerCount++;
+            }
+        }
+        if (upperCount == 0 || max - min < 2) {
+            markEqualizationCooldown(session, fluids, now + EQUALIZE_COOLDOWN_TICKS);
+            return false;
+        }
+        Long2IntOpenHashMap desired = steppedEqualizationTarget(fluids, y, upperCount, lowerCount, total);
+        if (desired.equals(fluids)) {
+            markEqualizationCooldown(session, fluids, now + EQUALIZE_COOLDOWN_TICKS);
+            return false;
+        }
+        applyVolumes(level, fluids, desired, session);
+        LongOpenHashSet keys = new LongOpenHashSet(fluids.keySet());
+        keys.addAll(desired.keySet());
+        LongIterator iterator = keys.iterator();
+        while (iterator.hasNext()) {
+            long key = iterator.nextLong();
+            session.memory.equalizationCooldown.put(key, now + EQUALIZE_CHANGED_COOLDOWN_TICKS);
+            if (fluids.get(key) != desired.get(key)) {
+                session.memory.equalizedAt.put(key, now);
+            }
+        }
+        return true;
+    }
+
+    private static Long2IntOpenHashMap collectEqualizationWindow(Level level, BlockPos start, Session session, long now) {
+        Long2IntOpenHashMap fluids = new Long2IntOpenHashMap();
+        fluids.defaultReturnValue(0);
+        LongOpenHashSet frontier = new LongOpenHashSet();
+        LongOpenHashSet next = new LongOpenHashSet();
+        fluids.put(start.asLong(), volumeAt(level, start, session, true));
+        frontier.add(start.asLong());
+        for (int step = 0; step < EQUALIZE_STEPS; step++) {
+            next.clear();
+            LongIterator frontierIterator = frontier.iterator();
+            while (frontierIterator.hasNext()) {
+                BlockPos current = BlockPos.of(frontierIterator.nextLong());
+                boolean walls = false;
+                for (Direction direction : HORIZONTAL_DIRECTIONS) {
+                    BlockPos neighbor = current.relative(direction);
+                    long neighborKey = neighbor.asLong();
+                    if (fluids.containsKey(neighborKey)) {
+                        continue;
+                    }
+                    if (!level.isLoaded(neighbor) || !canEnter(level, current, direction, neighbor)) {
+                        walls = true;
+                        continue;
+                    }
+                    int units = volumeAt(level, neighbor, session, false);
+                    fluids.put(neighborKey, units);
+                    if (fluids.size() > EQUALIZE_MAX_CELLS) {
+                        return fluids;
+                    }
+                    if (units > 0) {
+                        if (session.memory.equalizationCooldown.get(neighborKey) <= now) {
+                            next.add(neighborKey);
+                        }
+                    } else {
+                        walls = true;
+                    }
+                }
+                if (walls && current.getY() == start.getY()) {
+                    BlockPos below = current.below();
+                    long belowKey = below.asLong();
+                    if (!fluids.containsKey(belowKey)
+                            && level.isLoaded(below)
+                            && canEnter(level, current, Direction.DOWN, below)) {
+                        int units = volumeAt(level, below, session, false);
+                        fluids.put(belowKey, units);
+                        if (fluids.size() > EQUALIZE_MAX_CELLS) {
+                            return fluids;
+                        }
+                        if (units > 0 && session.memory.equalizationCooldown.get(belowKey) <= now) {
+                            next.add(belowKey);
+                        }
+                    }
+                }
+            }
+            if (next.isEmpty()) {
+                break;
+            }
+            frontier.clear();
+            frontier.addAll(next);
+        }
+        return fluids;
+    }
+
+    private static Long2IntOpenHashMap steppedEqualizationTarget(Long2IntOpenHashMap fluids, int y, int upperCount, int lowerCount, int total) {
+        Long2IntOpenHashMap target = new Long2IntOpenHashMap();
+        target.defaultReturnValue(0);
+        List<Long> upperKeys = new ArrayList<>();
+        List<Long> lowerKeys = new ArrayList<>();
+        for (long key : fluids.keySet()) {
+            if (BlockPos.of(key).getY() == y) {
+                upperKeys.add(key);
+            } else {
+                lowerKeys.add(key);
+            }
+        }
+        upperKeys.sort((a, b) -> Integer.compare(fluids.get(b), fluids.get(a)));
+        lowerKeys.sort((a, b) -> Integer.compare(fluids.get(b), fluids.get(a)));
+        boolean bottom = lowerCount > 0 && total <= MAX_UNITS * lowerCount;
+        if (bottom) {
+            int mid = total / lowerCount;
+            int remainder = total % lowerCount;
+            for (int i = 0; i < lowerKeys.size(); i++) {
+                target.put(lowerKeys.get(i), mid + (i < remainder ? 1 : 0));
+            }
+            for (long key : upperKeys) {
+                target.put(key, 0);
+            }
+        } else {
+            for (long key : lowerKeys) {
+                target.put(key, MAX_UNITS);
+            }
+            int remaining = total - MAX_UNITS * lowerCount;
+            int mid = remaining / upperCount;
+            int remainder = remaining % upperCount;
+            for (int i = 0; i < upperKeys.size(); i++) {
+                target.put(upperKeys.get(i), mid + (i < remainder ? 1 : 0));
+            }
+        }
+        Long2IntOpenHashMap desired = new Long2IntOpenHashMap(fluids);
+        desired.defaultReturnValue(0);
+        List<Long> donors = new ArrayList<>();
+        List<Long> receivers = new ArrayList<>();
+        for (long key : fluids.keySet()) {
+            int current = fluids.get(key);
+            int wanted = target.get(key);
+            if (current > wanted) {
+                donors.add(key);
+            } else if (current < wanted) {
+                receivers.add(key);
+            }
+        }
+        donors.sort((a, b) -> Integer.compare(fluids.get(b) - target.get(b), fluids.get(a) - target.get(a)));
+        receivers.sort((a, b) -> Integer.compare(target.get(b) - fluids.get(b), target.get(a) - fluids.get(a)));
+        int pairs = Math.min(EQUALIZE_MAX_MOVES, Math.min(donors.size(), receivers.size()));
+        for (int i = 0; i < pairs; i++) {
+            long donor = donors.get(i);
+            int donorNext = desired.get(donor) - 1;
+            if (donorNext <= 0) {
+                desired.remove(donor);
+            } else {
+                desired.put(donor, donorNext);
+            }
+            long receiver = receivers.get(i);
+            desired.put(receiver, desired.get(receiver) + 1);
+        }
+        return desired;
+    }
+
+    private static void markEqualizationCooldown(Session session, Long2IntOpenHashMap fluids, long until) {
+        for (long key : fluids.keySet()) {
+            session.memory.equalizationCooldown.put(key, until);
+        }
     }
 
     private static void processInfiniteCell(Level level, BlockPos pos, Session session) {
