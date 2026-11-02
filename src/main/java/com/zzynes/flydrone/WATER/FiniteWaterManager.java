@@ -679,7 +679,7 @@ public final class FiniteWaterManager {
             int mid = total / lowerCount;
             int remainder = total % lowerCount;
             for (int i = 0; i < lowerKeys.size(); i++) {
-                target.put(lowerKeys.get(i), mid + (i < remainder ? 1 : 0));
+                target.put(lowerKeys.get(i).longValue(), mid + (i < remainder ? 1 : 0));
             }
             for (long key : upperKeys) {
                 target.put(key, 0);
@@ -692,7 +692,7 @@ public final class FiniteWaterManager {
             int mid = remaining / upperCount;
             int remainder = remaining % upperCount;
             for (int i = 0; i < upperKeys.size(); i++) {
-                target.put(upperKeys.get(i), mid + (i < remainder ? 1 : 0));
+                target.put(upperKeys.get(i).longValue(), mid + (i < remainder ? 1 : 0));
             }
         }
         Long2IntOpenHashMap desired = new Long2IntOpenHashMap(fluids);
