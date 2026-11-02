@@ -58,13 +58,6 @@ public final class FiniteWaterManager {
         return classify(level, pos, session) == BodyKind.FINITE;
     }
 
-    public static boolean shouldSuppressFlow(BlockGetter level, BlockPos pos) {
-        if (!(level instanceof Level actualLevel) || !isOpenWater(actualLevel, pos)) {
-            return false;
-        }
-        return session(actualLevel).memory.finiteCells.contains(pos.asLong());
-    }
-
     public static boolean canAddBucket(Level level, BlockPos pos) {
         if (!isOpenWater(level, pos)) {
             return false;
@@ -133,25 +126,34 @@ public final class FiniteWaterManager {
     }
 
     public static boolean handleTick(Level level, BlockPos pos, FluidState state) {
-        if (!state.is(FluidTags.WATER) || !isOpenWater(level, pos)) {
-            return false;
-        }
-        Session session = session(level);
-        long key = pos.asLong();
-        if (!session.memory.finiteCells.contains(key)) {
-            if (!level.isClientSide) {
-                return false;
-            }
-            return classify(level, pos, session) == BodyKind.FINITE;
-        }
-        if (hasAdjacentUnknownWater(level, pos, session)
-                && classify(level, pos, session) != BodyKind.FINITE) {
+        if (!state.is(FluidTags.WATER)) {
             return false;
         }
         if (level.isClientSide) {
             return true;
         }
-        processCell(level, pos, session);
+        Session session = session(level);
+        if (!isOpenWater(level, pos)) {
+            long key = pos.asLong();
+            boolean changed = session.memory.finiteCells.remove(key);
+            changed |= session.memory.volumes.remove(key) != 0;
+            session.memory.largeCells.remove(key);
+            if (changed) {
+                session.markDirty();
+            }
+            return true;
+        }
+        BodyKind kind;
+        if (session.memory.finiteCells.contains(pos.asLong()) && !hasAdjacentUnknownWater(level, pos, session)) {
+            kind = BodyKind.FINITE;
+        } else {
+            kind = classify(level, pos, session);
+        }
+        if (kind == BodyKind.FINITE) {
+            processCell(level, pos, session);
+        } else if (kind == BodyKind.LARGE) {
+            processInfiniteCell(level, pos, session);
+        }
         return true;
     }
 
@@ -434,6 +436,54 @@ public final class FiniteWaterManager {
         tryPressureRise(level, pos, units, session);
     }
 
+    private static void processInfiniteCell(Level level, BlockPos pos, Session session) {
+        int units = volumeAt(level, pos, session, false);
+        if (units <= 0) {
+            return;
+        }
+        if (level.getFluidState(pos).getValue(FlowingFluid.FALLING)) {
+            setUnits(level, pos, units, null, session, false);
+        }
+        if (units < MAX_UNITS) {
+            return;
+        }
+        BlockPos below = pos.below();
+        if (canEnter(level, pos, Direction.DOWN, below) && volumeAt(level, below, session, false) < MAX_UNITS) {
+            setUnits(level, below, MAX_UNITS, Direction.DOWN, session, false);
+            schedule(level, pos);
+            schedule(level, below);
+            return;
+        }
+        List<FlowCandidate> candidates = new ArrayList<>();
+        for (Direction direction : HORIZONTAL_DIRECTIONS) {
+            BlockPos target = pos.relative(direction);
+            if (!canEnter(level, pos, direction, target)) {
+                continue;
+            }
+            int targetUnits = volumeAt(level, target, session, false);
+            if (targetUnits < MAX_UNITS) {
+                candidates.add(new FlowCandidate(target.immutable(), direction, targetUnits));
+            }
+        }
+        if (candidates.isEmpty()) {
+            return;
+        }
+        int bestHead = Integer.MAX_VALUE;
+        for (FlowCandidate candidate : candidates) {
+            bestHead = Math.min(bestHead, candidate.targetHead());
+        }
+        List<FlowCandidate> best = new ArrayList<>();
+        for (FlowCandidate candidate : candidates) {
+            if (candidate.targetHead() == bestHead) {
+                best.add(candidate);
+            }
+        }
+        FlowCandidate chosen = best.get(level.getRandom().nextInt(best.size()));
+        setUnits(level, chosen.pos(), MAX_UNITS, chosen.direction(), session, false);
+        schedule(level, pos);
+        schedule(level, chosen.pos());
+    }
+
     private static boolean tryFlowDown(Level level, BlockPos pos, int units, Session session) {
         BlockPos below = pos.below();
         if (!canEnter(level, pos, Direction.DOWN, below)) {
@@ -443,7 +493,8 @@ public final class FiniteWaterManager {
         if (belowUnits >= MAX_UNITS) {
             return false;
         }
-        return transfer(level, pos, below, Direction.DOWN, 1, session);
+        int move = Math.min(units, MAX_UNITS - belowUnits);
+        return move > 0 && transfer(level, pos, below, Direction.DOWN, move, session);
     }
 
     private static boolean tryFlowSideways(Level level, BlockPos pos, int units, Session session) {
@@ -463,20 +514,30 @@ public final class FiniteWaterManager {
             int difference = ownHead - targetHead;
             int requiredDifference = ownHead > units ? 1 : 2;
             if (difference >= requiredDifference) {
-                candidates.add(new FlowCandidate(target.immutable(), direction));
+                candidates.add(new FlowCandidate(target.immutable(), direction, targetHead));
             } else if (difference == 1 && units > 1 && targetUnits > 0) {
                 if (ownDistanceToEmpty < 0) {
                     ownDistanceToEmpty = distanceToEmpty(level, pos, session);
                 }
                 if (distanceToEmpty(level, target, session) < ownDistanceToEmpty) {
-                    candidates.add(new FlowCandidate(target.immutable(), direction));
+                    candidates.add(new FlowCandidate(target.immutable(), direction, targetHead));
                 }
             }
         }
         if (candidates.isEmpty()) {
             return false;
         }
-        FlowCandidate chosen = candidates.get(level.getRandom().nextInt(candidates.size()));
+        int bestHead = Integer.MAX_VALUE;
+        for (FlowCandidate candidate : candidates) {
+            bestHead = Math.min(bestHead, candidate.targetHead());
+        }
+        List<FlowCandidate> best = new ArrayList<>();
+        for (FlowCandidate candidate : candidates) {
+            if (candidate.targetHead() == bestHead) {
+                best.add(candidate);
+            }
+        }
+        FlowCandidate chosen = best.get(level.getRandom().nextInt(best.size()));
         return transfer(level, pos, chosen.pos(), chosen.direction(), 1, session);
     }
 
@@ -582,6 +643,10 @@ public final class FiniteWaterManager {
     }
 
     private static void setUnits(Level level, BlockPos pos, int units, Direction entryDirection, Session session) {
+        setUnits(level, pos, units, entryDirection, session, true);
+    }
+
+    private static void setUnits(Level level, BlockPos pos, int units, Direction entryDirection, Session session, boolean trackFinite) {
         long key = pos.asLong();
         if (units <= 0) {
             boolean changed = session.memory.finiteCells.remove(key);
@@ -597,9 +662,16 @@ public final class FiniteWaterManager {
         }
 
         int clamped = Math.min(units, MAX_UNITS);
-        boolean changed = session.memory.finiteCells.add(key);
-        changed |= session.memory.volumes.put(key, clamped) != clamped;
-        session.memory.largeCells.remove(key);
+        boolean changed;
+        if (trackFinite) {
+            changed = session.memory.finiteCells.add(key);
+            changed |= session.memory.volumes.put(key, clamped) != clamped;
+            session.memory.largeCells.remove(key);
+        } else {
+            changed = session.memory.finiteCells.remove(key);
+            changed |= session.memory.volumes.remove(key) != 0;
+            session.memory.largeCells.put(key, level.getGameTime() + LARGE_HINT_TICKS);
+        }
         FluidState newFluidState = fluidStateForUnits(clamped);
         BlockState oldState = level.getBlockState(pos);
         BlockState newState = newFluidState.createLegacyBlock();
@@ -735,7 +807,7 @@ public final class FiniteWaterManager {
         NOT_WATER
     }
 
-    private record FlowCandidate(BlockPos pos, Direction direction) {
+    private record FlowCandidate(BlockPos pos, Direction direction, int targetHead) {
     }
 
     private record Session(FiniteWaterData.Memory memory, FiniteWaterData data) {
