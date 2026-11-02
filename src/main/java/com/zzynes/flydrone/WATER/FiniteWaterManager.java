@@ -582,9 +582,11 @@ public final class FiniteWaterManager {
         int ownHead = columnHead(level, pos, session);
         int ownDistanceToEmpty = -1;
         List<FlowCandidate> candidates = new ArrayList<>();
+        boolean retryNextTick = false;
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos target = pos.relative(direction);
             if (session.memory.equalizedAt.get(target.asLong()) == level.getGameTime()) {
+                retryNextTick = true;
                 continue;
             }
             if (!canEnter(level, pos, direction, target)) {
@@ -609,6 +611,9 @@ public final class FiniteWaterManager {
             }
         }
         if (candidates.isEmpty()) {
+            if (retryNextTick) {
+                schedule(level, pos, 1);
+            }
             return false;
         }
         int bestHead = Integer.MAX_VALUE;
@@ -757,8 +762,13 @@ public final class FiniteWaterManager {
         long now = level.getGameTime();
         session.memory.equalizedAt.put(from.asLong(), now);
         session.memory.equalizedAt.put(to.asLong(), now);
-        schedule(level, from);
-        schedule(level, to);
+        if (direction == Direction.DOWN) {
+            schedule(level, from);
+            schedule(level, to);
+        } else {
+            scheduleHorizontalAround(level, from, 1);
+            scheduleHorizontalAround(level, to, 1);
+        }
         return true;
     }
 
@@ -894,9 +904,13 @@ public final class FiniteWaterManager {
     }
 
     private static void schedule(Level level, BlockPos pos) {
+        schedule(level, pos, TICK_DELAY);
+    }
+
+    private static void schedule(Level level, BlockPos pos, int delay) {
         FluidState state = level.getFluidState(pos);
         if (state.is(FluidTags.WATER)) {
-            level.scheduleTick(pos, state.getType(), TICK_DELAY);
+            level.scheduleTick(pos, state.getType(), delay);
         }
     }
 
@@ -904,6 +918,13 @@ public final class FiniteWaterManager {
         schedule(level, pos);
         for (Direction direction : Direction.values()) {
             schedule(level, pos.relative(direction));
+        }
+    }
+
+    private static void scheduleHorizontalAround(Level level, BlockPos pos, int delay) {
+        schedule(level, pos, delay);
+        for (Direction direction : HORIZONTAL_DIRECTIONS) {
+            schedule(level, pos.relative(direction), delay);
         }
     }
 
