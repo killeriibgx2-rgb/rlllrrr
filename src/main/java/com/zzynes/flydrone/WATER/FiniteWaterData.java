@@ -32,9 +32,13 @@ public class FiniteWaterData extends SavedData {
         long[] volumeCells = tag.getLongArray("VolumeCells");
         int[] volumes = tag.getIntArray("Volumes");
         int count = Math.min(volumeCells.length, volumes.length);
+        boolean millibuckets = tag.getInt("VolumeVersion") >= 2;
         for (int i = 0; i < count; i++) {
             if (volumes[i] > 0) {
-                memory.volumes.put(volumeCells[i], volumes[i]);
+                int volume = millibuckets || volumes[i] > FiniteWaterManager.BUCKET_UNITS
+                        ? volumes[i]
+                        : volumes[i] * FiniteWaterManager.MILLIBUCKETS_PER_UNIT;
+                memory.volumes.put(volumeCells[i], volume);
             }
         }
         return new FiniteWaterData(memory);
@@ -53,6 +57,7 @@ public class FiniteWaterData extends SavedData {
         }
         tag.putLongArray("VolumeCells", volumeCells);
         tag.putIntArray("Volumes", volumes);
+        tag.putInt("VolumeVersion", 2);
         return tag;
     }
 
