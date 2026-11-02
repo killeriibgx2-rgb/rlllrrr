@@ -17,46 +17,61 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 public class PartialWaterBucketItem extends Item {
     private static final String WATER_UNITS_TAG = "FiniteWaterUnits";
+    private static final String WATER_MILLIBUCKETS_TAG = "FiniteWaterMillibuckets";
 
     public PartialWaterBucketItem() {
         super(new Item.Properties().stacksTo(1));
     }
 
     public static int getUnits(ItemStack stack) {
+        return getMillibuckets(stack) / FiniteWaterManager.MILLIBUCKETS_PER_UNIT;
+    }
+
+    public static int getMillibuckets(ItemStack stack) {
         CompoundTag tag = stack.getTag();
-        int units = tag == null ? 0 : tag.getInt(WATER_UNITS_TAG);
-        return Mth.clamp(units, 0, FiniteWaterManager.BUCKET_UNITS);
+        if (tag == null) {
+            return 0;
+        }
+        if (tag.contains(WATER_MILLIBUCKETS_TAG)) {
+            return Mth.clamp(tag.getInt(WATER_MILLIBUCKETS_TAG), 0, FiniteWaterManager.BUCKET_MILLIBUCKETS);
+        }
+        int units = Mth.clamp(tag.getInt(WATER_UNITS_TAG), 0, FiniteWaterManager.BUCKET_UNITS);
+        return units * FiniteWaterManager.MILLIBUCKETS_PER_UNIT;
     }
 
     public static ItemStack stackForUnits(int units) {
-        int clamped = Mth.clamp(units, 0, FiniteWaterManager.BUCKET_UNITS);
+        return stackForMillibuckets(units * FiniteWaterManager.MILLIBUCKETS_PER_UNIT);
+    }
+
+    public static ItemStack stackForMillibuckets(int millibuckets) {
+        int clamped = Mth.clamp(millibuckets, 0, FiniteWaterManager.BUCKET_MILLIBUCKETS);
         if (clamped <= 0) {
             return new ItemStack(Items.BUCKET);
         }
-        if (clamped >= FiniteWaterManager.BUCKET_UNITS) {
+        if (clamped >= FiniteWaterManager.BUCKET_MILLIBUCKETS) {
             return new ItemStack(Items.WATER_BUCKET);
         }
         ItemStack stack = new ItemStack(FiniteWaterItems.PARTIAL_WATER_BUCKET.get());
-        stack.getOrCreateTag().putInt(WATER_UNITS_TAG, clamped);
+        stack.getOrCreateTag().putInt(WATER_MILLIBUCKETS_TAG, clamped);
         return stack;
     }
 
     @Override
     public boolean isBarVisible(ItemStack stack) {
-        int units = getUnits(stack);
-        return units > 0 && units < FiniteWaterManager.BUCKET_UNITS;
+        int millibuckets = getMillibuckets(stack);
+        return millibuckets > 0 && millibuckets < FiniteWaterManager.BUCKET_MILLIBUCKETS;
     }
 
     @Override
     public int getBarWidth(ItemStack stack) {
-        return Math.round(13.0F * getUnits(stack) / FiniteWaterManager.BUCKET_UNITS);
+        int millibuckets = getMillibuckets(stack);
+        return millibuckets <= 0 ? 0 : Math.max(1, Math.round(13.0F * millibuckets / FiniteWaterManager.BUCKET_MILLIBUCKETS));
     }
 
     @Override
@@ -67,8 +82,35 @@ public class PartialWaterBucketItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        int units = getUnits(stack);
+        int millibuckets = getMillibuckets(stack);
         BlockHitResult hit = getPlayerPOVHitResult(level, player, ClipContext.Fluid.ANY);
+        BlockPos pickupPos = FiniteWaterManager.findBucketPickupPos(level, player, hit, false);
+        if (pickupPos != null) {
+            Direction face = hit.getDirection();
+            if (!level.mayInteract(player, pickupPos) || !player.mayUseItemAt(pickupPos, face, stack)) {
+                return InteractionResultHolder.fail(stack);
+            }
+            int freeMillibuckets = FiniteWaterManager.BUCKET_MILLIBUCKETS - millibuckets;
+            if (freeMillibuckets <= 0) {
+                return InteractionResultHolder.fail(stack);
+            }
+            if (level.isClientSide) {
+                return InteractionResultHolder.success(stack);
+            }
+            int pickedMillibuckets = FiniteWaterManager.tryPickupWaterMillibuckets(level, pickupPos, freeMillibuckets);
+            if (pickedMillibuckets <= 0) {
+                return InteractionResultHolder.fail(stack);
+            }
+            ItemStack result = stackForMillibuckets(millibuckets + pickedMillibuckets);
+            player.setItemInHand(hand, result);
+            player.awardStat(Stats.ITEM_USED.get(this));
+            level.playSound(player, pickupPos, SoundEvents.BUCKET_FILL, SoundSource.BLOCKS, 1.0F, 1.0F);
+            level.gameEvent(player, GameEvent.FLUID_PICKUP, pickupPos);
+            if (player instanceof ServerPlayer serverPlayer) {
+                CriteriaTriggers.FILLED_BUCKET.trigger(serverPlayer, result);
+            }
+            return InteractionResultHolder.consume(result);
+        }
         if (hit.getType() == HitResult.Type.MISS) {
             return InteractionResultHolder.pass(stack);
         }
@@ -81,43 +123,21 @@ public class PartialWaterBucketItem extends Item {
         if (!level.mayInteract(player, hitPos) || !player.mayUseItemAt(placement, face, stack)) {
             return InteractionResultHolder.fail(stack);
         }
-        if (level.getBlockState(hitPos).is(Blocks.WATER)) {
-            int freeUnits = FiniteWaterManager.BUCKET_UNITS - units;
-            if (freeUnits <= 0) {
-                return InteractionResultHolder.fail(stack);
-            }
-            if (level.isClientSide) {
-                return InteractionResultHolder.success(stack);
-            }
-            int pickedUnits = FiniteWaterManager.tryPickupWaterUnits(level, hitPos, freeUnits);
-            if (pickedUnits <= 0) {
-                return InteractionResultHolder.fail(stack);
-            }
-            ItemStack result = stackForUnits(units + pickedUnits);
-            player.setItemInHand(hand, result);
-            player.awardStat(Stats.ITEM_USED.get(this));
-            level.playSound(player, hitPos, SoundEvents.BUCKET_FILL, SoundSource.BLOCKS, 1.0F, 1.0F);
-            level.gameEvent(player, GameEvent.FLUID_PICKUP, hitPos);
-            if (player instanceof ServerPlayer serverPlayer) {
-                CriteriaTriggers.FILLED_BUCKET.trigger(serverPlayer, result);
-            }
-            return InteractionResultHolder.consume(result);
-        }
-        if (units <= 0) {
+        if (millibuckets <= 0) {
             return InteractionResultHolder.fail(stack);
         }
         if (level.isClientSide) {
-            return FiniteWaterManager.canPlaceWaterUnits(level, placement, units)
+            return FiniteWaterManager.canPlaceWaterMillibuckets(level, placement, millibuckets)
                     ? InteractionResultHolder.success(stack)
                     : InteractionResultHolder.fail(stack);
         }
-        int addedUnits = FiniteWaterManager.tryPlaceWaterUnits(level, placement, units);
-        if (addedUnits <= 0) {
+        int addedMillibuckets = FiniteWaterManager.tryPlaceWaterMillibuckets(level, placement, millibuckets);
+        if (addedMillibuckets <= 0) {
             return InteractionResultHolder.fail(stack);
         }
         ItemStack result = stack;
         if (!player.getAbilities().instabuild) {
-            result = stackForUnits(units - addedUnits);
+            result = stackForMillibuckets(millibuckets - addedMillibuckets);
             player.setItemInHand(hand, result);
         }
         player.awardStat(Stats.ITEM_USED.get(this));
