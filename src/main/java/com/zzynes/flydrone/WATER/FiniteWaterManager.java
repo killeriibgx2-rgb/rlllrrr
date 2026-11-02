@@ -29,8 +29,8 @@ import java.util.WeakHashMap;
 public final class FiniteWaterManager {
     public static final int BUCKET_UNITS = 10;
     public static final int MILLIBUCKETS_PER_UNIT = 100;
-    private static final int MAX_UNITS = 10;
-    private static final int MAX_BODY_UNITS = 20000;
+    private static final int MAX_UNITS = BUCKET_UNITS * MILLIBUCKETS_PER_UNIT;
+    private static final int MAX_BODY_UNITS = 20000 * MILLIBUCKETS_PER_UNIT;
     private static final int MAX_SCAN_CELLS = 40000;
     private static final int EQUALIZE_STEPS = 16;
     private static final int EQUALIZE_MAX_CELLS = 512;
@@ -83,8 +83,8 @@ public final class FiniteWaterManager {
             return false;
         }
         int requested = Math.min(units, BUCKET_UNITS);
-        Long2IntOpenHashMap planned = plannedAdd(level, component, session, requested);
-        int added = componentTotal(planned) - componentTotal(component);
+        Long2IntOpenHashMap planned = plannedAdd(level, component, session, requested * MILLIBUCKETS_PER_UNIT);
+        int added = (componentTotal(planned) - componentTotal(component)) / MILLIBUCKETS_PER_UNIT;
         return requireAll ? added >= requested : added > 0;
     }
 
@@ -111,8 +111,8 @@ public final class FiniteWaterManager {
         if (component == null) {
             return 0;
         }
-        Long2IntOpenHashMap planned = plannedAdd(level, component, session, Math.min(units, BUCKET_UNITS));
-        int added = componentTotal(planned) - componentTotal(component);
+        Long2IntOpenHashMap planned = plannedAdd(level, component, session, Math.min(units, BUCKET_UNITS) * MILLIBUCKETS_PER_UNIT);
+        int added = (componentTotal(planned) - componentTotal(component)) / MILLIBUCKETS_PER_UNIT;
         if (added > 0) {
             applyVolumes(level, component, planned, session);
         }
@@ -139,7 +139,7 @@ public final class FiniteWaterManager {
             return 0;
         }
         Session session = session(level);
-        setUnits(level, pos, requested, null, session);
+        setUnits(level, pos, requested * MILLIBUCKETS_PER_UNIT, null, session);
         scheduleAround(level, pos);
         return requested;
     }
@@ -165,13 +165,14 @@ public final class FiniteWaterManager {
         if (component == null) {
             return 0;
         }
-        int removeUnits = Math.min(requested, componentTotal(component));
+        int removeUnits = Math.min(requested * MILLIBUCKETS_PER_UNIT, componentTotal(component) / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT);
         if (removeUnits <= 0) {
             return 0;
         }
         Long2IntOpenHashMap desired = new Long2IntOpenHashMap(component);
         desired.defaultReturnValue(0);
-        for (int removed = 0; removed < removeUnits; removed++) {
+        int remaining = removeUnits;
+        while (remaining > 0) {
             long bestKey = 0L;
             int bestSurface = Integer.MIN_VALUE;
             boolean found = false;
@@ -190,15 +191,17 @@ public final class FiniteWaterManager {
             if (!found) {
                 return 0;
             }
-            int next = desired.get(bestKey) - 1;
+            int amount = Math.min(MILLIBUCKETS_PER_UNIT, Math.min(remaining, desired.get(bestKey)));
+            int next = desired.get(bestKey) - amount;
             if (next <= 0) {
                 desired.remove(bestKey);
             } else {
                 desired.put(bestKey, next);
             }
+            remaining -= amount;
         }
         applyVolumes(level, component, desired, session);
-        return removeUnits;
+        return removeUnits / MILLIBUCKETS_PER_UNIT;
     }
 
     public static boolean handleTick(Level level, BlockPos pos, FluidState state) {
@@ -369,13 +372,14 @@ public final class FiniteWaterManager {
     private static Long2IntOpenHashMap plannedAdd(Level level, Long2IntOpenHashMap component, Session session, int unitsToAdd) {
         Long2IntOpenHashMap desired = new Long2IntOpenHashMap(component);
         desired.defaultReturnValue(0);
-        for (int added = 0; added < unitsToAdd; added++) {
+        int remainingToAdd = unitsToAdd;
+        while (remainingToAdd >= MILLIBUCKETS_PER_UNIT) {
             long bestKey = 0L;
             int bestSurface = Integer.MAX_VALUE;
             boolean found = false;
             for (long key : shuffledKeys(desired, level)) {
                 int units = desired.get(key);
-                if (units <= 0 || units >= MAX_UNITS) {
+                if (units <= 0 || units > MAX_UNITS - MILLIBUCKETS_PER_UNIT) {
                     continue;
                 }
                 int surface = surface(key, units);
@@ -401,9 +405,11 @@ public final class FiniteWaterManager {
                     || bestExpansionSurface < bestSurface
                     || bestExpansionSurface == bestSurface && level.getRandom().nextBoolean());
             if (useExpansion) {
-                desired.put(bestExpansion.asLong(), 1);
+                desired.put(bestExpansion.asLong(), MILLIBUCKETS_PER_UNIT);
+                remainingToAdd -= MILLIBUCKETS_PER_UNIT;
             } else if (found) {
-                desired.put(bestKey, desired.get(bestKey) + 1);
+                desired.put(bestKey, desired.get(bestKey) + MILLIBUCKETS_PER_UNIT);
+                remainingToAdd -= MILLIBUCKETS_PER_UNIT;
             } else {
                 break;
             }
@@ -563,35 +569,69 @@ public final class FiniteWaterManager {
         int total = 0;
         int min = MAX_UNITS;
         int max = 0;
+        int wetUpperCount = 0;
+        int wetLowerCount = 0;
+        int wetTotal = 0;
+        int wetMin = MAX_UNITS;
+        int wetMax = 0;
+        Long2IntOpenHashMap wetFluids = new Long2IntOpenHashMap();
+        wetFluids.defaultReturnValue(0);
         for (var entry : fluids.long2IntEntrySet()) {
             BlockPos cell = BlockPos.of(entry.getLongKey());
             int units = entry.getIntValue();
             total += units;
+            if (units > 0) {
+                wetFluids.put(entry.getLongKey(), units);
+                wetTotal += units;
+            }
             if (cell.getY() == y) {
                 upperCount++;
                 min = Math.min(min, units);
                 max = Math.max(max, units);
+                if (units > 0) {
+                    wetUpperCount++;
+                    wetMin = Math.min(wetMin, units);
+                    wetMax = Math.max(wetMax, units);
+                }
             } else if (cell.getY() == y - 1) {
                 lowerCount++;
+                if (units > 0) {
+                    wetLowerCount++;
+                }
             }
         }
-        if (upperCount == 0 || max - min < 2) {
+        if (upperCount == 0) {
             markEqualizationCooldown(session, fluids, now + EQUALIZE_COOLDOWN_TICKS);
             return false;
         }
-        Long2IntOpenHashMap desired = steppedEqualizationTarget(fluids, y, upperCount, lowerCount, total);
-        if (desired.equals(fluids)) {
+        Long2IntOpenHashMap source = fluids;
+        Long2IntOpenHashMap desired;
+        if (max - min >= 2 * MILLIBUCKETS_PER_UNIT) {
+            desired = steppedEqualizationTarget(fluids, y, upperCount, lowerCount, total);
+            if (desired.equals(source) && wetUpperCount >= 2 && wetMax - wetMin > 1) {
+                source = wetFluids;
+                desired = steppedEqualizationTarget(source, y, wetUpperCount, wetLowerCount, wetTotal);
+            }
+        } else {
+            if (wetUpperCount < 2 || wetMax - wetMin <= 1) {
+                markEqualizationCooldown(session, fluids, now + EQUALIZE_COOLDOWN_TICKS);
+                return false;
+            }
+            source = wetFluids;
+            desired = steppedEqualizationTarget(source, y, wetUpperCount, wetLowerCount, wetTotal);
+        }
+        if (desired.equals(source)) {
             markEqualizationCooldown(session, fluids, now + EQUALIZE_COOLDOWN_TICKS);
             return false;
         }
-        applyVolumes(level, fluids, desired, session);
-        LongOpenHashSet keys = new LongOpenHashSet(fluids.keySet());
+        applyVolumes(level, source, desired, session);
+        LongOpenHashSet keys = new LongOpenHashSet(source.keySet());
         keys.addAll(desired.keySet());
         LongIterator iterator = keys.iterator();
         while (iterator.hasNext()) {
             long key = iterator.nextLong();
             session.memory.equalizationCooldown.put(key, now + EQUALIZE_CHANGED_COOLDOWN_TICKS);
-            if (fluids.get(key) != desired.get(key)) {
+            if (source.get(key) != desired.get(key)) {
                 session.memory.equalizedAt.put(key, now);
             }
         }
@@ -713,14 +753,18 @@ public final class FiniteWaterManager {
         int pairs = Math.min(EQUALIZE_MAX_MOVES, Math.min(donors.size(), receivers.size()));
         for (int i = 0; i < pairs; i++) {
             long donor = donors.get(i);
-            int donorNext = desired.get(donor) - 1;
+            long receiver = receivers.get(i);
+            int amount = Math.min(MILLIBUCKETS_PER_UNIT, Math.min(desired.get(donor) - target.get(donor), target.get(receiver) - desired.get(receiver)));
+            if (amount <= 0 || fluids.get(receiver) == 0 && amount < MILLIBUCKETS_PER_UNIT) {
+                continue;
+            }
+            int donorNext = desired.get(donor) - amount;
             if (donorNext <= 0) {
                 desired.remove(donor);
             } else {
                 desired.put(donor, donorNext);
             }
-            long receiver = receivers.get(i);
-            desired.put(receiver, desired.get(receiver) + 1);
+            desired.put(receiver, desired.get(receiver) + amount);
         }
         return desired;
     }
@@ -793,8 +837,11 @@ public final class FiniteWaterManager {
             return true;
         }
         int move = Math.min(units, MAX_UNITS - belowUnits);
-        if (move == units && units > 1) {
-            move--;
+        if (move >= MILLIBUCKETS_PER_UNIT) {
+            move -= move % MILLIBUCKETS_PER_UNIT;
+            if (units >= 2 * MILLIBUCKETS_PER_UNIT && units - move < MILLIBUCKETS_PER_UNIT) {
+                move -= MILLIBUCKETS_PER_UNIT;
+            }
         }
         return move > 0 && transfer(level, pos, below, Direction.DOWN, move, session);
     }
@@ -819,10 +866,10 @@ public final class FiniteWaterManager {
             }
             int targetHead = targetUnits > 0 ? columnHead(level, target, session) : 0;
             int difference = ownHead - targetHead;
-            int requiredDifference = ownHead > units ? 1 : 2;
+            int requiredDifference = ownHead > units ? MILLIBUCKETS_PER_UNIT : 2 * MILLIBUCKETS_PER_UNIT;
             if (difference >= requiredDifference) {
                 candidates.add(new FlowCandidate(target.immutable(), direction, targetHead));
-            } else if (difference == 1 && units > 1 && targetUnits > 0) {
+            } else if (difference >= MILLIBUCKETS_PER_UNIT && units > MILLIBUCKETS_PER_UNIT && targetUnits > 0) {
                 if (ownDistanceToEmpty < 0) {
                     ownDistanceToEmpty = distanceToEmpty(level, pos, session);
                 }
@@ -848,23 +895,25 @@ public final class FiniteWaterManager {
             }
         }
         int difference = ownHead - bestHead;
-        int totalMove = difference >= 2 ? difference / 2 : 1;
-        totalMove = Math.min(totalMove, units);
+        int totalMove = difference >= 2 * MILLIBUCKETS_PER_UNIT ? difference / 2 : MILLIBUCKETS_PER_UNIT;
+        totalMove -= totalMove % MILLIBUCKETS_PER_UNIT;
+        totalMove = Math.min(totalMove, units / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT);
         if (totalMove <= 0) {
             return false;
         }
         Collections.shuffle(best, new Random(level.getRandom().nextLong()));
-        int baseMove = totalMove / best.size();
-        int remainder = totalMove % best.size();
+        int totalPackets = totalMove / MILLIBUCKETS_PER_UNIT;
+        int baseMove = totalPackets / best.size();
+        int remainder = totalPackets % best.size();
         boolean moved = false;
         for (int i = 0; i < best.size(); i++) {
-            int amount = baseMove + (i < remainder ? 1 : 0);
+            int amount = (baseMove + (i < remainder ? 1 : 0)) * MILLIBUCKETS_PER_UNIT;
             if (amount <= 0) {
                 continue;
             }
             FlowCandidate candidate = best.get(i);
             int targetUnits = volumeAt(level, candidate.pos(), session, false);
-            amount = Math.min(amount, MAX_UNITS - targetUnits);
+            amount = Math.min(amount, (MAX_UNITS - targetUnits) / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT);
             if (amount > 0 && transfer(level, pos, candidate.pos(), candidate.direction(), amount, session)) {
                 moved = true;
             }
@@ -933,7 +982,7 @@ public final class FiniteWaterManager {
         int ownHead = columnHead(level, pos, session);
         Direction bestDirection = null;
         BlockPos bestPos = null;
-        int bestHead = ownHead + 1;
+        int bestHead = ownHead + MILLIBUCKETS_PER_UNIT;
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos neighbor = pos.relative(direction);
             if (!level.isLoaded(neighbor)
@@ -955,7 +1004,9 @@ public final class FiniteWaterManager {
         if (neighborUnits <= 0) {
             return false;
         }
-        int move = Math.min((bestHead - ownHead) / 2, Math.min(neighborUnits, MAX_UNITS - aboveUnits));
+        int move = (bestHead - ownHead) / 2;
+        move -= move % MILLIBUCKETS_PER_UNIT;
+        move = Math.min(move, Math.min(neighborUnits / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT, (MAX_UNITS - aboveUnits) / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT));
         if (move <= 0) {
             return false;
         }
@@ -1042,7 +1093,8 @@ public final class FiniteWaterManager {
         if (units >= MAX_UNITS) {
             return Fluids.WATER.getSource(false);
         }
-        return Fluids.FLOWING_WATER.getFlowing(displayAmountForUnits(units), false);
+        int displayUnits = Math.max(1, Math.min(BUCKET_UNITS, units / MILLIBUCKETS_PER_UNIT));
+        return Fluids.FLOWING_WATER.getFlowing(displayAmountForUnits(displayUnits), false);
     }
 
     private static int displayAmountForUnits(int units) {
@@ -1053,7 +1105,7 @@ public final class FiniteWaterManager {
         if (state.isSource()) {
             return MAX_UNITS;
         }
-        return switch (state.getAmount()) {
+        int displayUnits = switch (state.getAmount()) {
             case 1 -> 1;
             case 2 -> 2;
             case 3 -> 3;
@@ -1062,8 +1114,9 @@ public final class FiniteWaterManager {
             case 6 -> 7;
             case 7 -> 8;
             case 8 -> 9;
-            default -> Math.max(1, Math.min(MAX_UNITS, state.getAmount()));
+            default -> Math.max(1, Math.min(BUCKET_UNITS, state.getAmount()));
         };
+        return displayUnits * MILLIBUCKETS_PER_UNIT;
     }
 
     private static int volumeAt(Level level, BlockPos pos, Session session, boolean remember) {
