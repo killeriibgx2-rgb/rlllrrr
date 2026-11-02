@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 @Mixin(LevelAccessor.class)
-public interface LevelAccessorWaterTickMixin {
+public abstract class LevelAccessorWaterTickMixin {
     @ModifyVariable(method = "scheduleTick(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/material/Fluid;I)V", at = @At("HEAD"), index = 3, argsOnly = true)
     private int flyDrone$clampWaterTickDelay(int delay, BlockPos pos, Fluid fluid, int originalDelay) {
         if (fluid == Fluids.WATER || fluid == Fluids.FLOWING_WATER) {
