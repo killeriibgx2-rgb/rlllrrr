@@ -20,13 +20,10 @@ import net.minecraft.world.level.material.Fluids;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.WeakHashMap;
 
 public final class FiniteWaterManager {
@@ -35,11 +32,7 @@ public final class FiniteWaterManager {
     private static final int MAX_UNITS = 10;
     private static final int MAX_BODY_UNITS = 20000;
     private static final int MAX_SCAN_CELLS = 40000;
-    private static final int MAX_SETTLE_CELLS = 8192;
-    private static final int MAX_SETTLE_RADIUS = 96;
-    private static final int MAX_EQUALIZE_PASSES = 64;
-    private static final int MAX_DOWN_PASSES = 128;
-    private static final int TICK_DELAY = 1;
+    private static final int TICK_DELAY = 2;
     private static final long LARGE_HINT_TICKS = 100L;
     private static final Direction[] HORIZONTAL_DIRECTIONS = new Direction[]{Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
     private static final Map<Level, FiniteWaterData.Memory> CLIENT_MEMORY = new WeakHashMap<>();
@@ -504,7 +497,8 @@ public final class FiniteWaterManager {
         if (level.getFluidState(pos).getValue(FlowingFluid.FALLING)) {
             setUnits(level, pos, units, null, session);
         }
-        if (settleFinite(level, pos, session)) {
+        if (session.memory.equalizedAt.get(pos.asLong()) == level.getGameTime()) {
+            schedule(level, pos);
             return;
         }
         if (tryFlowDown(level, pos, units, session)) {
@@ -514,332 +508,6 @@ public final class FiniteWaterManager {
             return;
         }
         tryPressureRise(level, pos, units, session);
-    }
-
-    private static boolean settleFinite(Level level, BlockPos start, Session session) {
-        long now = level.getGameTime();
-        if (session.memory.equalizedAt.get(start.asLong()) == now) {
-            return true;
-        }
-        Long2IntOpenHashMap desired = collectLocalVolumes(level, start, session);
-        if (desired == null) {
-            return false;
-        }
-        Long2IntOpenHashMap original = new Long2IntOpenHashMap(desired);
-        original.defaultReturnValue(0);
-        settleDown(level, desired, original);
-        for (int pass = 0; pass < MAX_EQUALIZE_PASSES; pass++) {
-            boolean changed = equalizeColumns(level, desired, original);
-            if (levelFreeSurfacesOnce(level, desired, original)) {
-                changed = true;
-            }
-            if (!changed) {
-                break;
-            }
-        }
-        settleDown(level, desired, original);
-        applyVolumes(level, original, desired, session);
-        LongOpenHashSet keys = new LongOpenHashSet(original.keySet());
-        keys.addAll(desired.keySet());
-        LongIterator iterator = keys.iterator();
-        while (iterator.hasNext()) {
-            session.memory.equalizedAt.put(iterator.nextLong(), now);
-        }
-        return true;
-    }
-
-    private static Long2IntOpenHashMap collectLocalVolumes(Level level, BlockPos start, Session session) {
-        Long2IntOpenHashMap desired = new Long2IntOpenHashMap();
-        desired.defaultReturnValue(0);
-        LongOpenHashSet visited = new LongOpenHashSet();
-        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-        visited.add(start.asLong());
-        queue.add(start);
-        while (!queue.isEmpty()) {
-            BlockPos pos = queue.removeFirst();
-            if (!isOpenWater(level, pos)) {
-                continue;
-            }
-            int units = volumeAt(level, pos, session, true);
-            if (units <= 0) {
-                continue;
-            }
-            desired.put(pos.asLong(), units);
-            if (desired.size() > MAX_SETTLE_CELLS) {
-                return null;
-            }
-            for (Direction direction : Direction.values()) {
-                BlockPos neighbor = pos.relative(direction);
-                long neighborKey = neighbor.asLong();
-                if (visited.contains(neighborKey)
-                        || !level.isLoaded(neighbor)
-                        || !isOpenWater(level, neighbor)) {
-                    continue;
-                }
-                int distance = Math.abs(neighbor.getX() - start.getX())
-                        + Math.abs(neighbor.getY() - start.getY())
-                        + Math.abs(neighbor.getZ() - start.getZ());
-                if (distance > MAX_SETTLE_RADIUS) {
-                    return null;
-                }
-                visited.add(neighborKey);
-                queue.add(neighbor);
-            }
-        }
-        return desired.isEmpty() ? null : desired;
-    }
-
-    private static boolean settleDown(Level level, Long2IntOpenHashMap desired, Long2IntOpenHashMap original) {
-        boolean any = false;
-        for (int pass = 0; pass < MAX_DOWN_PASSES; pass++) {
-            List<Long> keys = new ArrayList<>(desired.keySet());
-            keys.sort(Comparator.comparingInt(key -> BlockPos.of(key).getY()));
-            boolean changed = false;
-            for (long key : keys) {
-                int units = desired.get(key);
-                if (units <= 0) {
-                    continue;
-                }
-                BlockPos pos = BlockPos.of(key);
-                BlockPos below = pos.below();
-                long belowKey = below.asLong();
-                int belowUnits = desired.get(belowKey);
-                int capacity;
-                if (belowUnits > 0) {
-                    capacity = MAX_UNITS - belowUnits;
-                } else if (isOpenWater(level, below)) {
-                    if (!original.containsKey(belowKey)) {
-                        continue;
-                    }
-                    capacity = MAX_UNITS;
-                } else {
-                    if (!canEnter(level, pos, Direction.DOWN, below)) {
-                        continue;
-                    }
-                    capacity = MAX_UNITS;
-                }
-                int move = Math.min(units, capacity);
-                if (move <= 0) {
-                    continue;
-                }
-                putDesired(desired, pos, units - move);
-                putDesired(desired, below, belowUnits + move);
-                changed = true;
-                any = true;
-            }
-            if (!changed) {
-                break;
-            }
-        }
-        return any;
-    }
-
-    private static boolean equalizeColumns(Level level, Long2IntOpenHashMap desired, Long2IntOpenHashMap original) {
-        List<Long> keys = new ArrayList<>(desired.keySet());
-        Set<ColumnPair> handled = new HashSet<>();
-        boolean changed = false;
-        for (long key : keys) {
-            if (desired.get(key) <= 0) {
-                continue;
-            }
-            BlockPos from = BlockPos.of(key);
-            for (Direction direction : HORIZONTAL_DIRECTIONS) {
-                BlockPos to = from.relative(direction);
-                long toKey = to.asLong();
-                int toUnits = desired.get(toKey);
-                boolean toWater = toUnits > 0;
-                if (!toWater) {
-                    if (isOpenWater(level, to) && !original.containsKey(toKey)) {
-                        continue;
-                    }
-                    if (!canEnter(level, from, direction, to)) {
-                        continue;
-                    }
-                }
-                long fromColumn = BlockPos.asLong(from.getX(), 0, from.getZ());
-                long toColumn = BlockPos.asLong(to.getX(), 0, to.getZ());
-                ColumnPair pair = fromColumn < toColumn
-                        ? new ColumnPair(fromColumn, toColumn)
-                        : new ColumnPair(toColumn, fromColumn);
-                if (!handled.add(pair)) {
-                    continue;
-                }
-                int fromSurface = columnSurfaceFromMap(desired, from);
-                BlockPos toReceiver;
-                int toSurface;
-                if (toWater) {
-                    toSurface = columnSurfaceFromMap(desired, to);
-                    toReceiver = columnReceiver(level, desired, original, to);
-                } else {
-                    toReceiver = emptyColumnReceiver(level, desired, original, to);
-                    if (toReceiver == null) {
-                        continue;
-                    }
-                    toSurface = surfaceForReceiver(desired, toReceiver);
-                }
-                BlockPos donor;
-                BlockPos receiver;
-                int difference;
-                if (fromSurface > toSurface) {
-                    donor = columnTop(desired, from);
-                    receiver = toReceiver;
-                    difference = fromSurface - toSurface;
-                } else if (toSurface > fromSurface && toWater) {
-                    donor = columnTop(desired, to);
-                    receiver = columnReceiver(level, desired, original, from);
-                    difference = toSurface - fromSurface;
-                } else {
-                    continue;
-                }
-                if (difference <= 1 || donor.equals(receiver)) {
-                    continue;
-                }
-                int donorUnits = desired.get(donor.asLong());
-                int receiverUnits = desired.get(receiver.asLong());
-                int move = Math.min(difference / 2, Math.min(donorUnits, MAX_UNITS - receiverUnits));
-                if (move <= 0) {
-                    continue;
-                }
-                putDesired(desired, donor, donorUnits - move);
-                putDesired(desired, receiver, receiverUnits + move);
-                changed = true;
-            }
-        }
-        return changed;
-    }
-
-    private static boolean levelFreeSurfacesOnce(Level level, Long2IntOpenHashMap desired, Long2IntOpenHashMap original) {
-        BlockPos donor = null;
-        int donorSurface = Integer.MIN_VALUE;
-        int donorUnits = 0;
-        BlockPos receiver = null;
-        int receiverSurface = Integer.MAX_VALUE;
-        int receiverCapacity = 0;
-        for (var entry : desired.long2IntEntrySet()) {
-            int units = entry.getIntValue();
-            if (units <= 0) {
-                continue;
-            }
-            BlockPos pos = BlockPos.of(entry.getLongKey());
-            if (desired.get(pos.above().asLong()) > 0) {
-                continue;
-            }
-            int surface = pos.getY() * MAX_UNITS + units;
-            if (surface > donorSurface) {
-                donor = pos;
-                donorSurface = surface;
-                donorUnits = units;
-            }
-            BlockPos candidateReceiver = columnReceiver(level, desired, original, pos);
-            int capacity = MAX_UNITS - desired.get(candidateReceiver.asLong());
-            if (capacity <= 0) {
-                continue;
-            }
-            int candidateSurface = surfaceForReceiver(desired, candidateReceiver);
-            if (candidateSurface < receiverSurface) {
-                receiver = candidateReceiver;
-                receiverSurface = candidateSurface;
-                receiverCapacity = capacity;
-            }
-        }
-        if (donor == null || receiver == null || donor.equals(receiver)) {
-            return false;
-        }
-        int difference = donorSurface - receiverSurface;
-        if (difference <= 1) {
-            return false;
-        }
-        int receiverUnits = desired.get(receiver.asLong());
-        int move = Math.min(difference / 2, Math.min(donorUnits, receiverCapacity));
-        if (move <= 0) {
-            return false;
-        }
-        putDesired(desired, donor, donorUnits - move);
-        putDesired(desired, receiver, receiverUnits + move);
-        return true;
-    }
-
-    private static void putDesired(Long2IntOpenHashMap desired, BlockPos pos, int units) {
-        long key = pos.asLong();
-        if (units <= 0) {
-            desired.remove(key);
-        } else {
-            desired.put(key, Math.min(MAX_UNITS, units));
-        }
-    }
-
-    private static BlockPos columnTop(Long2IntOpenHashMap desired, BlockPos pos) {
-        BlockPos top = pos;
-        for (int i = 0; i < 128; i++) {
-            if (desired.get(top.asLong()) < MAX_UNITS) {
-                break;
-            }
-            BlockPos above = top.above();
-            if (desired.get(above.asLong()) <= 0) {
-                break;
-            }
-            top = above;
-        }
-        return top;
-    }
-
-    private static int columnSurfaceFromMap(Long2IntOpenHashMap desired, BlockPos pos) {
-        int surface = pos.getY() * MAX_UNITS;
-        BlockPos cursor = pos;
-        for (int i = 0; i < 128; i++) {
-            int units = desired.get(cursor.asLong());
-            if (units <= 0) {
-                break;
-            }
-            surface += units;
-            if (units < MAX_UNITS) {
-                break;
-            }
-            cursor = cursor.above();
-        }
-        return surface;
-    }
-
-    private static BlockPos columnReceiver(Level level, Long2IntOpenHashMap desired, Long2IntOpenHashMap original, BlockPos pos) {
-        BlockPos top = columnTop(desired, pos);
-        if (desired.get(top.asLong()) < MAX_UNITS) {
-            return top;
-        }
-        BlockPos above = top.above();
-        long aboveKey = above.asLong();
-        if (desired.get(aboveKey) > 0) {
-            return columnTop(desired, above);
-        }
-        if (isOpenWater(level, above) && !original.containsKey(aboveKey)) {
-            return top;
-        }
-        return canEnter(level, top, Direction.UP, above) ? above : top;
-    }
-
-    private static BlockPos emptyColumnReceiver(Level level, Long2IntOpenHashMap desired, Long2IntOpenHashMap original, BlockPos empty) {
-        BlockPos cursor = empty;
-        for (int i = 0; i < 128; i++) {
-            BlockPos below = cursor.below();
-            long belowKey = below.asLong();
-            if (desired.get(belowKey) > 0) {
-                return columnReceiver(level, desired, original, below);
-            }
-            if (isOpenWater(level, below)) {
-                if (!original.containsKey(belowKey)) {
-                    return null;
-                }
-            } else if (!canPlaceIntoEmpty(level, below)) {
-                break;
-            }
-            cursor = below;
-        }
-        return cursor;
-    }
-
-    private static int surfaceForReceiver(Long2IntOpenHashMap desired, BlockPos receiver) {
-        return desired.get(receiver.asLong()) > 0
-                ? columnSurfaceFromMap(desired, receiver)
-                : receiver.getY() * MAX_UNITS;
     }
 
     private static void processInfiniteCell(Level level, BlockPos pos, Session session) {
@@ -899,7 +567,14 @@ public final class FiniteWaterManager {
         if (belowUnits >= MAX_UNITS) {
             return false;
         }
+        if (session.memory.equalizedAt.get(below.asLong()) == level.getGameTime()) {
+            schedule(level, pos);
+            return true;
+        }
         int move = Math.min(units, MAX_UNITS - belowUnits);
+        if (move == units && units > 1) {
+            move--;
+        }
         return move > 0 && transfer(level, pos, below, Direction.DOWN, move, session);
     }
 
@@ -909,6 +584,9 @@ public final class FiniteWaterManager {
         List<FlowCandidate> candidates = new ArrayList<>();
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos target = pos.relative(direction);
+            if (session.memory.equalizedAt.get(target.asLong()) == level.getGameTime()) {
+                continue;
+            }
             if (!canEnter(level, pos, direction, target)) {
                 continue;
             }
@@ -943,8 +621,29 @@ public final class FiniteWaterManager {
                 best.add(candidate);
             }
         }
-        FlowCandidate chosen = best.get(level.getRandom().nextInt(best.size()));
-        return transfer(level, pos, chosen.pos(), chosen.direction(), 1, session);
+        int difference = ownHead - bestHead;
+        int totalMove = difference >= 2 ? difference / 2 : 1;
+        totalMove = Math.min(totalMove, units);
+        if (totalMove <= 0) {
+            return false;
+        }
+        Collections.shuffle(best, new Random(level.getRandom().nextLong()));
+        int baseMove = totalMove / best.size();
+        int remainder = totalMove % best.size();
+        boolean moved = false;
+        for (int i = 0; i < best.size(); i++) {
+            int amount = baseMove + (i < remainder ? 1 : 0);
+            if (amount <= 0) {
+                continue;
+            }
+            FlowCandidate candidate = best.get(i);
+            int targetUnits = volumeAt(level, candidate.pos(), session, false);
+            amount = Math.min(amount, MAX_UNITS - targetUnits);
+            if (amount > 0 && transfer(level, pos, candidate.pos(), candidate.direction(), amount, session)) {
+                moved = true;
+            }
+        }
+        return moved;
     }
 
     private static int distanceToEmpty(Level level, BlockPos start, Session session) {
@@ -1001,7 +700,8 @@ public final class FiniteWaterManager {
             return false;
         }
         int aboveUnits = volumeAt(level, above, session, false);
-        if (aboveUnits >= MAX_UNITS) {
+        if (aboveUnits >= MAX_UNITS
+                || session.memory.equalizedAt.get(above.asLong()) == level.getGameTime()) {
             return false;
         }
         int ownHead = columnHead(level, pos, session);
@@ -1010,7 +710,9 @@ public final class FiniteWaterManager {
         int bestHead = ownHead + 1;
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos neighbor = pos.relative(direction);
-            if (!level.isLoaded(neighbor) || !isOpenWater(level, neighbor)) {
+            if (!level.isLoaded(neighbor)
+                    || !isOpenWater(level, neighbor)
+                    || session.memory.equalizedAt.get(neighbor.asLong()) == level.getGameTime()) {
                 continue;
             }
             int neighborHead = columnHead(level, neighbor, session);
@@ -1027,11 +729,20 @@ public final class FiniteWaterManager {
         if (neighborUnits <= 0) {
             return false;
         }
-        setUnits(level, above, aboveUnits + 1, Direction.UP, session);
-        setUnits(level, bestPos, neighborUnits - 1, bestDirection.getOpposite(), session);
+        int move = Math.min((bestHead - ownHead) / 2, Math.min(neighborUnits, MAX_UNITS - aboveUnits));
+        if (move <= 0) {
+            return false;
+        }
+        setUnits(level, above, aboveUnits + move, Direction.UP, session);
+        setUnits(level, bestPos, neighborUnits - move, bestDirection.getOpposite(), session);
+        long now = level.getGameTime();
+        session.memory.equalizedAt.put(pos.asLong(), now);
+        session.memory.equalizedAt.put(above.asLong(), now);
+        session.memory.equalizedAt.put(bestPos.asLong(), now);
         schedule(level, pos);
         schedule(level, above);
         schedule(level, bestPos);
+        schedule(level, bestPos.above());
         return true;
     }
 
@@ -1043,6 +754,9 @@ public final class FiniteWaterManager {
         }
         setUnits(level, to, toUnits + units, direction, session);
         setUnits(level, from, fromUnits - units, direction.getOpposite(), session);
+        long now = level.getGameTime();
+        session.memory.equalizedAt.put(from.asLong(), now);
+        session.memory.equalizedAt.put(to.asLong(), now);
         schedule(level, from);
         schedule(level, to);
         return true;
@@ -1224,9 +938,6 @@ public final class FiniteWaterManager {
     }
 
     private record FlowCandidate(BlockPos pos, Direction direction, int targetHead) {
-    }
-
-    private record ColumnPair(long first, long second) {
     }
 
     private record Session(FiniteWaterData.Memory memory, FiniteWaterData data) {
