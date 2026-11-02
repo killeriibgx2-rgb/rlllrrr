@@ -2,6 +2,7 @@ package com.zzynes.flydrone.WATER.mixin;
 
 import com.zzynes.flydrone.WATER.FiniteWaterManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.FlowingFluid;
@@ -17,14 +18,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class FlowingFluidMixin {
     @Inject(method = "getFlow", at = @At("HEAD"), cancellable = true)
     private void flyDrone$finiteWaterFlow(BlockGetter level, BlockPos pos, FluidState state, CallbackInfoReturnable<Vec3> callback) {
-        if (FiniteWaterManager.shouldSuppressFlow(level, pos)) {
+        if (state.is(FluidTags.WATER)) {
             callback.setReturnValue(Vec3.ZERO);
         }
     }
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     private void flyDrone$finiteWaterTick(Level level, BlockPos pos, FluidState state, CallbackInfo callback) {
-        if (FiniteWaterManager.handleTick(level, pos, state)) {
+        if (state.is(FluidTags.WATER)) {
+            FiniteWaterManager.handleTick(level, pos, state);
             callback.cancel();
         }
     }
