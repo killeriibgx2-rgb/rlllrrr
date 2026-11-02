@@ -4,6 +4,7 @@ import com.zzynes.flydrone.BLOCK.BlockRegistry;
 import com.zzynes.flydrone.Domm.DommRegistry;
 import com.zzynes.flydrone.Radio.RadioMod;
 import com.zzynes.flydrone.VVER.VverRegistry;
+import com.zzynes.flydrone.WATER.PartialWaterBucketItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
@@ -60,6 +61,7 @@ public class ModCreativeTabs {
                         output.accept(BlockRegistry.SANDBAG_DIRT_SAND_ITEM.get());
                         output.accept(BlockRegistry.SANDBAG_SAND_SAND_ITEM.get());
                         output.accept(ModItems.HANDHELD_SIREN.get());
+                        output.accept(PartialWaterBucketItem.stackForUnits(5));
                     })
                     .build());
 

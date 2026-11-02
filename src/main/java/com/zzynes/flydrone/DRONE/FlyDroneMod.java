@@ -8,6 +8,7 @@ import com.zzynes.flydrone.DRONE.init.ModItems;
 import com.zzynes.flydrone.Domm.DommRegistry;
 import com.zzynes.flydrone.Radio.RadioMod;
 import com.zzynes.flydrone.VVER.VverRegistry;
+import com.zzynes.flydrone.WATER.FiniteWaterItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.player.Player;
@@ -39,6 +40,7 @@ public class FlyDroneMod {
         BlockRegistry.register(modEventBus);
         ModSounds.register(modEventBus);
         BlastParticleTypes.register(modEventBus);
+        FiniteWaterItems.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);
 

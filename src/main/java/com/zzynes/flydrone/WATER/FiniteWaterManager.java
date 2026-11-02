@@ -27,8 +27,9 @@ import java.util.Random;
 import java.util.WeakHashMap;
 
 public final class FiniteWaterManager {
+    public static final int BUCKET_UNITS = 10;
+    public static final int MILLIBUCKETS_PER_UNIT = 100;
     private static final int MAX_UNITS = 10;
-    private static final int BUCKET_UNITS = 10;
     private static final int MAX_BODY_UNITS = 20000;
     private static final int MAX_SCAN_CELLS = 40000;
     private static final int TICK_DELAY = 5;
@@ -59,16 +60,15 @@ public final class FiniteWaterManager {
     }
 
     public static boolean canAddBucket(Level level, BlockPos pos) {
-        if (!isOpenWater(level, pos)) {
-            return false;
-        }
-        Session session = session(level);
-        Long2IntOpenHashMap component = collectComponent(level, pos, session);
-        return component != null && plannedAdd(level, component, session) != null;
+        return canAddWaterUnits(level, pos, BUCKET_UNITS, true);
     }
 
-    public static boolean tryAddBucket(Level level, BlockPos pos) {
-        if (level.isClientSide || !isOpenWater(level, pos)) {
+    public static boolean canAddWaterUnits(Level level, BlockPos pos, int units) {
+        return canAddWaterUnits(level, pos, units, false);
+    }
+
+    private static boolean canAddWaterUnits(Level level, BlockPos pos, int units, boolean requireAll) {
+        if (units <= 0 || !isOpenWater(level, pos)) {
             return false;
         }
         Session session = session(level);
@@ -76,26 +76,96 @@ public final class FiniteWaterManager {
         if (component == null) {
             return false;
         }
-        Long2IntOpenHashMap planned = plannedAdd(level, component, session);
-        if (planned == null) {
-            return false;
-        }
-        applyVolumes(level, component, planned, session);
-        return true;
+        int requested = Math.min(units, BUCKET_UNITS);
+        Long2IntOpenHashMap planned = plannedAdd(level, component, session, requested);
+        int added = componentTotal(planned) - componentTotal(component);
+        return requireAll ? added >= requested : added > 0;
     }
 
-    public static boolean tryPickupBucket(Level level, BlockPos pos) {
-        if (level.isClientSide || !isOpenWater(level, pos)) {
+    public static boolean canPlaceWaterUnits(Level level, BlockPos pos, int units) {
+        if (units <= 0 || !level.isLoaded(pos)) {
             return false;
+        }
+        if (isOpenWater(level, pos)) {
+            return canAddWaterUnits(level, pos, units) || !isFiniteAt(level, pos);
+        }
+        return canPlaceIntoEmpty(level, pos);
+    }
+
+    public static boolean tryAddBucket(Level level, BlockPos pos) {
+        return tryAddWaterUnits(level, pos, BUCKET_UNITS) >= BUCKET_UNITS;
+    }
+
+    public static int tryAddWaterUnits(Level level, BlockPos pos, int units) {
+        if (level.isClientSide || units <= 0 || !isOpenWater(level, pos)) {
+            return 0;
         }
         Session session = session(level);
         Long2IntOpenHashMap component = collectComponent(level, pos, session);
-        if (component == null || componentTotal(component) < BUCKET_UNITS) {
-            return false;
+        if (component == null) {
+            return 0;
+        }
+        Long2IntOpenHashMap planned = plannedAdd(level, component, session, Math.min(units, BUCKET_UNITS));
+        int added = componentTotal(planned) - componentTotal(component);
+        if (added > 0) {
+            applyVolumes(level, component, planned, session);
+        }
+        return added;
+    }
+
+    public static int tryPlaceWaterUnits(Level level, BlockPos pos, int units) {
+        if (level.isClientSide || units <= 0 || !level.isLoaded(pos)) {
+            return 0;
+        }
+        int requested = Math.min(units, BUCKET_UNITS);
+        if (isOpenWater(level, pos)) {
+            Session session = session(level);
+            BodyKind kind = classify(level, pos, session);
+            if (kind == BodyKind.LARGE) {
+                return requested;
+            }
+            if (kind != BodyKind.FINITE) {
+                return 0;
+            }
+            return tryAddWaterUnits(level, pos, requested);
+        }
+        if (!canPlaceIntoEmpty(level, pos)) {
+            return 0;
+        }
+        Session session = session(level);
+        setUnits(level, pos, requested, null, session);
+        scheduleAround(level, pos);
+        return requested;
+    }
+
+    public static boolean tryPickupBucket(Level level, BlockPos pos) {
+        return tryPickupWaterUnits(level, pos, BUCKET_UNITS) >= BUCKET_UNITS;
+    }
+
+    public static int tryPickupWaterUnits(Level level, BlockPos pos, int maxUnits) {
+        if (level.isClientSide || maxUnits <= 0 || !isOpenWater(level, pos)) {
+            return 0;
+        }
+        Session session = session(level);
+        BodyKind kind = classify(level, pos, session);
+        int requested = Math.min(maxUnits, BUCKET_UNITS);
+        if (kind == BodyKind.LARGE) {
+            return requested;
+        }
+        if (kind != BodyKind.FINITE) {
+            return 0;
+        }
+        Long2IntOpenHashMap component = collectComponent(level, pos, session);
+        if (component == null) {
+            return 0;
+        }
+        int removeUnits = Math.min(requested, componentTotal(component));
+        if (removeUnits <= 0) {
+            return 0;
         }
         Long2IntOpenHashMap desired = new Long2IntOpenHashMap(component);
         desired.defaultReturnValue(0);
-        for (int removed = 0; removed < BUCKET_UNITS; removed++) {
+        for (int removed = 0; removed < removeUnits; removed++) {
             long bestKey = 0L;
             int bestSurface = Integer.MIN_VALUE;
             boolean found = false;
@@ -112,7 +182,7 @@ public final class FiniteWaterManager {
                 }
             }
             if (!found) {
-                return false;
+                return 0;
             }
             int next = desired.get(bestKey) - 1;
             if (next <= 0) {
@@ -122,7 +192,7 @@ public final class FiniteWaterManager {
             }
         }
         applyVolumes(level, component, desired, session);
-        return true;
+        return removeUnits;
     }
 
     public static boolean handleTick(Level level, BlockPos pos, FluidState state) {
@@ -290,10 +360,10 @@ public final class FiniteWaterManager {
         return component;
     }
 
-    private static Long2IntOpenHashMap plannedAdd(Level level, Long2IntOpenHashMap component, Session session) {
+    private static Long2IntOpenHashMap plannedAdd(Level level, Long2IntOpenHashMap component, Session session, int unitsToAdd) {
         Long2IntOpenHashMap desired = new Long2IntOpenHashMap(component);
         desired.defaultReturnValue(0);
-        for (int added = 0; added < BUCKET_UNITS; added++) {
+        for (int added = 0; added < unitsToAdd; added++) {
             long bestKey = 0L;
             int bestSurface = Integer.MAX_VALUE;
             boolean found = false;
@@ -329,7 +399,7 @@ public final class FiniteWaterManager {
             } else if (found) {
                 desired.put(bestKey, desired.get(bestKey) + 1);
             } else {
-                return null;
+                break;
             }
         }
         return desired;
@@ -785,6 +855,16 @@ public final class FiniteWaterManager {
         for (Direction direction : Direction.values()) {
             schedule(level, pos.relative(direction));
         }
+    }
+
+    private static boolean canPlaceIntoEmpty(Level level, BlockPos pos) {
+        if (!level.isLoaded(pos)) {
+            return false;
+        }
+        BlockState state = level.getBlockState(pos);
+        return state.getFluidState().isEmpty()
+                && !(state.getBlock() instanceof LiquidBlockContainer)
+                && (state.isAir() || state.canBeReplaced());
     }
 
     private static boolean isOpenWater(BlockGetter level, BlockPos pos) {
