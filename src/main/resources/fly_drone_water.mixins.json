@@ -6,7 +6,8 @@
   "refmap": "fly_drone-refmap.json",
   "mixins": [
     "FlowingFluidAccess",
-    "FlowingFluidMixin"
+    "FlowingFluidMixin",
+    "ServerLevelWaterTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1
