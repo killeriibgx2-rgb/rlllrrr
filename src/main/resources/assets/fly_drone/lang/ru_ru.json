@@ -60,6 +60,7 @@
   "block.fly_drone.vver_t_shaped_pipe": "Т-образная труба ВВЭР",
   "block.fly_drone.vver_x_shaped_pipe": "X-образная труба ВВЭР",
   "block.fly_drone.vver_valve": "Клапан ВВЭР",
+  "block.fly_drone.drain": "Дренажный люк",
   "item.fly_drone.vver_core_filler": "Заполнитель активной зоны",
   "tooltip.fly_drone.vver_core_filler.fill": "Удерживать ПКМ по обшивке — закачка воды",
   "tooltip.fly_drone.vver_core_filler.drain": "Shift + удерживать ПКМ — слив воды",
