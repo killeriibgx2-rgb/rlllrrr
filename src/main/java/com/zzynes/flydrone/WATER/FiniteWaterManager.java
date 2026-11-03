@@ -360,6 +360,8 @@ public final class FiniteWaterManager {
             return;
         }
         long key = pos.asLong();
+        session.memory.equalizationCooldown.remove(key);
+        schedule(level, pos, 1);
         if (session.memory.finiteCells.contains(key)) {
             return;
         }
@@ -685,6 +687,9 @@ public final class FiniteWaterManager {
             return;
         }
         if (tryPressureRise(level, pos, units, session)) {
+            return;
+        }
+        if (units >= MAX_UNITS && trySaturatedPressureEqualize(level, pos, session)) {
             return;
         }
         tryEqualizeSurface(level, pos, session);
@@ -1271,7 +1276,7 @@ public final class FiniteWaterManager {
         return true;
     }
 
-    private static BlockPos findSaturatedPressureDonor(Level level, BlockPos start, int ownSurface, Session session) {
+    private static boolean consumePressureSearch(Level level, BlockPos start, Session session) {
         long now = level.getGameTime();
         if (session.memory.pressureSearchTick != now) {
             session.memory.pressureSearchTick = now;
@@ -1279,9 +1284,108 @@ public final class FiniteWaterManager {
         }
         if (session.memory.pressureSearchesThisTick >= PRESSURE_SEARCHES_PER_TICK) {
             schedule(level, start, 2);
-            return null;
+            return false;
         }
         session.memory.pressureSearchesThisTick++;
+        return true;
+    }
+
+    private static boolean trySaturatedPressureEqualize(Level level, BlockPos start, Session session) {
+        if (!consumePressureSearch(level, start, session)) {
+            return false;
+        }
+        long now = level.getGameTime();
+        LongOpenHashSet visited = new LongOpenHashSet();
+        LongOpenHashSet evaluatedColumns = new LongOpenHashSet();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        visited.add(start.asLong());
+        queue.add(start);
+        BlockPos donorNode = null;
+        BlockPos receiverNode = null;
+        BlockPos receiverAbove = null;
+        int highestSurface = Integer.MIN_VALUE;
+        int lowestSurface = Integer.MAX_VALUE;
+        while (!queue.isEmpty() && visited.size() <= EQUALIZE_MAX_CELLS) {
+            BlockPos current = queue.removeFirst();
+            long columnKey = BlockPos.asLong(current.getX(), 0, current.getZ());
+            if (!evaluatedColumns.contains(columnKey)) {
+                BlockPos above = current.above();
+                for (int i = 0; i < 128 && level.isLoaded(above) && volumeAt(level, above, session, false) >= MAX_UNITS; i++) {
+                    above = above.above();
+                }
+                if (level.isLoaded(above)
+                        && canEnter(level, above.below(), Direction.UP, above)
+                        && !changedByFlowThisTick(session, current.asLong(), now)
+                        && !changedByFlowThisTick(session, above.asLong(), now)) {
+                    evaluatedColumns.add(columnKey);
+                    int surface = current.getY() * MAX_UNITS + columnHead(level, current, session);
+                    if (surface > highestSurface) {
+                        highestSurface = surface;
+                        donorNode = current.immutable();
+                    }
+                    if (surface < lowestSurface) {
+                        lowestSurface = surface;
+                        receiverNode = current.immutable();
+                        receiverAbove = above.immutable();
+                    }
+                }
+            }
+            for (Direction direction : Direction.values()) {
+                BlockPos neighbor = current.relative(direction);
+                long neighborKey = neighbor.asLong();
+                if (visited.contains(neighborKey)
+                        || !level.isLoaded(neighbor)
+                        || !canEnter(level, current, direction, neighbor)
+                        || volumeAt(level, neighbor, session, false) < MAX_UNITS) {
+                    continue;
+                }
+                visited.add(neighborKey);
+                queue.add(neighbor);
+            }
+        }
+        if (donorNode == null || receiverNode == null || receiverAbove == null) {
+            return false;
+        }
+        if (donorNode.getX() == receiverNode.getX() && donorNode.getZ() == receiverNode.getZ()) {
+            return false;
+        }
+        int difference = highestSurface - lowestSurface;
+        if (difference <= 1) {
+            return false;
+        }
+        int donorUnits = volumeAt(level, donorNode, session, false);
+        int receiverUnits = volumeAt(level, receiverAbove, session, false);
+        if (donorUnits <= 0 || receiverUnits >= MAX_UNITS) {
+            return false;
+        }
+        int move = Math.min(MILLIBUCKETS_PER_UNIT, (difference + 1) / 2);
+        move = Math.min(move, Math.min(donorUnits, MAX_UNITS - receiverUnits));
+        if (move <= 0) {
+            return false;
+        }
+        setUnits(level, receiverAbove, receiverUnits + move, Direction.UP, session);
+        setUnits(level, donorNode, donorUnits - move, null, session);
+        session.memory.flowInAt.put(receiverAbove.asLong(), now);
+        session.memory.flowOutAt.put(donorNode.asLong(), now);
+        session.memory.flowOutAt.put(receiverNode.asLong(), now);
+        session.memory.flowOutAt.put(start.asLong(), now);
+        session.memory.equalizedAt.put(donorNode.asLong(), now);
+        session.memory.equalizedAt.put(receiverNode.asLong(), now);
+        session.memory.equalizedAt.put(receiverAbove.asLong(), now);
+        session.memory.equalizedAt.put(start.asLong(), now);
+        schedule(level, start);
+        schedule(level, donorNode);
+        schedule(level, donorNode.above());
+        schedule(level, receiverNode);
+        schedule(level, receiverAbove);
+        return true;
+    }
+
+    private static BlockPos findSaturatedPressureDonor(Level level, BlockPos start, int ownSurface, Session session) {
+        long now = level.getGameTime();
+        if (!consumePressureSearch(level, start, session)) {
+            return null;
+        }
         LongOpenHashSet visited = new LongOpenHashSet();
         LongOpenHashSet evaluatedColumns = new LongOpenHashSet();
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
