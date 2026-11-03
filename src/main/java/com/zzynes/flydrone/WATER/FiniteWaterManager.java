@@ -46,6 +46,11 @@ public final class FiniteWaterManager {
     private static final long EQUALIZE_CHANGED_COOLDOWN_TICKS = 4L;
     private static final int TICK_DELAY = 2;
     private static final long LARGE_HINT_TICKS = 100L;
+    private static final int COMPONENT_WAKE_MAX_CELLS = 512;
+    private static final long COMPONENT_WAKE_INTERVAL_TICKS = 10L;
+    private static final long SAFETY_SCAN_INTERVAL_TICKS = 10L;
+    private static final int SAFETY_SCAN_CELLS_PER_RUN = 256;
+    private static final int SAFETY_WAKE_PER_RUN = 64;
     private static final Direction[] HORIZONTAL_DIRECTIONS = new Direction[]{Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
     private static final Map<Level, FiniteWaterData.Memory> CLIENT_MEMORY = new WeakHashMap<>();
 
@@ -54,17 +59,19 @@ public final class FiniteWaterManager {
 
     public static void activateAround(Level level, BlockPos changedPos, EnumSet<Direction> notifiedSides) {
         Session session = session(level);
-        activate(level, changedPos, session);
+        boolean externalChange = kindAt(level, changedPos) == null;
+        activate(level, changedPos, session, externalChange);
         for (Direction direction : notifiedSides) {
-            activate(level, changedPos.relative(direction), session);
+            activate(level, changedPos.relative(direction), session, externalChange);
         }
     }
 
     public static boolean isFiniteAt(Level level, BlockPos pos) {
-        if (!isOpenWater(level, pos)) {
+        FiniteFluidKind kind = kindAt(level, pos);
+        if (kind == null) {
             return false;
         }
-        Session session = session(level);
+        Session session = session(level, kind);
         if (session.memory.finiteCells.contains(pos.asLong())) {
             return true;
         }
@@ -72,18 +79,22 @@ public final class FiniteWaterManager {
     }
 
     public static boolean canAddBucket(Level level, BlockPos pos) {
-        return canAddWaterUnits(level, pos, BUCKET_UNITS, true);
+        return canAddFluidUnits(level, pos, BUCKET_UNITS, true, FiniteFluidKind.WATER);
     }
 
     public static boolean canAddWaterUnits(Level level, BlockPos pos, int units) {
-        return canAddWaterUnits(level, pos, units, false);
+        return canAddFluidUnits(level, pos, units, false, FiniteFluidKind.WATER);
     }
 
     public static boolean canAddWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
-        if (millibuckets <= 0 || !isOpenWater(level, pos)) {
+        return canAddFluidMillibuckets(level, pos, millibuckets, FiniteFluidKind.WATER);
+    }
+
+    public static boolean canAddFluidMillibuckets(Level level, BlockPos pos, int millibuckets, FiniteFluidKind kind) {
+        if (millibuckets <= 0 || !isOpenFluid(level, pos, kind)) {
             return false;
         }
-        Session session = session(level);
+        Session session = session(level, kind);
         Long2IntOpenHashMap component = collectComponent(level, pos, session);
         if (component == null) {
             return false;
@@ -93,11 +104,11 @@ public final class FiniteWaterManager {
         return componentTotal(planned) > componentTotal(component);
     }
 
-    private static boolean canAddWaterUnits(Level level, BlockPos pos, int units, boolean requireAll) {
-        if (units <= 0 || !isOpenWater(level, pos)) {
+    private static boolean canAddFluidUnits(Level level, BlockPos pos, int units, boolean requireAll, FiniteFluidKind kind) {
+        if (units <= 0 || !isOpenFluid(level, pos, kind)) {
             return false;
         }
-        Session session = session(level);
+        Session session = session(level, kind);
         Long2IntOpenHashMap component = collectComponent(level, pos, session);
         if (component == null) {
             return false;
@@ -109,23 +120,31 @@ public final class FiniteWaterManager {
     }
 
     public static boolean canPlaceWaterUnits(Level level, BlockPos pos, int units) {
+        return canPlaceFluidUnits(level, pos, units, FiniteFluidKind.WATER);
+    }
+
+    public static boolean canPlaceFluidUnits(Level level, BlockPos pos, int units, FiniteFluidKind kind) {
         if (units <= 0 || !level.isLoaded(pos)) {
             return false;
         }
-        if (isOpenWater(level, pos)) {
-            return canAddWaterUnits(level, pos, units) || !isFiniteAt(level, pos);
+        if (isOpenFluid(level, pos, kind)) {
+            return canAddFluidUnits(level, pos, units, false, kind) || !isFiniteAt(level, pos);
         }
-        return canPlaceIntoEmpty(level, pos);
+        return canPlaceIntoEmpty(level, pos, kind);
     }
 
     public static boolean canPlaceWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
+        return canPlaceFluidMillibuckets(level, pos, millibuckets, FiniteFluidKind.WATER);
+    }
+
+    public static boolean canPlaceFluidMillibuckets(Level level, BlockPos pos, int millibuckets, FiniteFluidKind kind) {
         if (millibuckets <= 0 || !level.isLoaded(pos)) {
             return false;
         }
-        if (isOpenWater(level, pos)) {
-            return canAddWaterMillibuckets(level, pos, millibuckets) || !isFiniteAt(level, pos);
+        if (isOpenFluid(level, pos, kind)) {
+            return canAddFluidMillibuckets(level, pos, millibuckets, kind) || !isFiniteAt(level, pos);
         }
-        return canPlaceIntoEmpty(level, pos);
+        return canPlaceIntoEmpty(level, pos, kind);
     }
 
     public static boolean tryAddBucket(Level level, BlockPos pos) {
@@ -133,10 +152,14 @@ public final class FiniteWaterManager {
     }
 
     public static int tryAddWaterUnits(Level level, BlockPos pos, int units) {
-        if (level.isClientSide || units <= 0 || !isOpenWater(level, pos)) {
+        return tryAddFluidUnits(level, pos, units, FiniteFluidKind.WATER);
+    }
+
+    public static int tryAddFluidUnits(Level level, BlockPos pos, int units, FiniteFluidKind kind) {
+        if (level.isClientSide || units <= 0 || !isOpenFluid(level, pos, kind)) {
             return 0;
         }
-        Session session = session(level);
+        Session session = session(level, kind);
         Long2IntOpenHashMap component = collectComponent(level, pos, session);
         if (component == null) {
             return 0;
@@ -150,10 +173,14 @@ public final class FiniteWaterManager {
     }
 
     public static int tryAddWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
-        if (level.isClientSide || millibuckets <= 0 || !isOpenWater(level, pos)) {
+        return tryAddFluidMillibuckets(level, pos, millibuckets, FiniteFluidKind.WATER);
+    }
+
+    public static int tryAddFluidMillibuckets(Level level, BlockPos pos, int millibuckets, FiniteFluidKind kind) {
+        if (level.isClientSide || millibuckets <= 0 || !isOpenFluid(level, pos, kind)) {
             return 0;
         }
-        Session session = session(level);
+        Session session = session(level, kind);
         Long2IntOpenHashMap component = collectComponent(level, pos, session);
         if (component == null) {
             return 0;
@@ -167,12 +194,16 @@ public final class FiniteWaterManager {
     }
 
     public static int tryPlaceWaterUnits(Level level, BlockPos pos, int units) {
+        return tryPlaceFluidUnits(level, pos, units, FiniteFluidKind.WATER);
+    }
+
+    public static int tryPlaceFluidUnits(Level level, BlockPos pos, int units, FiniteFluidKind fluidKind) {
         if (level.isClientSide || units <= 0 || !level.isLoaded(pos)) {
             return 0;
         }
         int requested = Math.min(units, BUCKET_UNITS);
-        if (isOpenWater(level, pos)) {
-            Session session = session(level);
+        if (isOpenFluid(level, pos, fluidKind)) {
+            Session session = session(level, fluidKind);
             BodyKind kind = classify(level, pos, session);
             if (kind == BodyKind.LARGE) {
                 return requested;
@@ -180,24 +211,28 @@ public final class FiniteWaterManager {
             if (kind != BodyKind.FINITE) {
                 return 0;
             }
-            return tryAddWaterUnits(level, pos, requested);
+            return tryAddFluidUnits(level, pos, requested, fluidKind);
         }
-        if (!canPlaceIntoEmpty(level, pos)) {
+        if (!canPlaceIntoEmpty(level, pos, fluidKind)) {
             return 0;
         }
-        Session session = session(level);
+        Session session = session(level, fluidKind);
         setUnits(level, pos, requested * MILLIBUCKETS_PER_UNIT, null, session);
         scheduleAround(level, pos);
         return requested;
     }
 
     public static int tryPlaceWaterMillibuckets(Level level, BlockPos pos, int millibuckets) {
+        return tryPlaceFluidMillibuckets(level, pos, millibuckets, FiniteFluidKind.WATER);
+    }
+
+    public static int tryPlaceFluidMillibuckets(Level level, BlockPos pos, int millibuckets, FiniteFluidKind fluidKind) {
         if (level.isClientSide || millibuckets <= 0 || !level.isLoaded(pos)) {
             return 0;
         }
         int requested = Math.min(millibuckets, BUCKET_MILLIBUCKETS);
-        if (isOpenWater(level, pos)) {
-            Session session = session(level);
+        if (isOpenFluid(level, pos, fluidKind)) {
+            Session session = session(level, fluidKind);
             BodyKind kind = classify(level, pos, session);
             if (kind == BodyKind.LARGE) {
                 return requested;
@@ -205,12 +240,12 @@ public final class FiniteWaterManager {
             if (kind != BodyKind.FINITE) {
                 return 0;
             }
-            return tryAddWaterMillibuckets(level, pos, requested);
+            return tryAddFluidMillibuckets(level, pos, requested, fluidKind);
         }
-        if (!canPlaceIntoEmpty(level, pos)) {
+        if (!canPlaceIntoEmpty(level, pos, fluidKind)) {
             return 0;
         }
-        Session session = session(level);
+        Session session = session(level, fluidKind);
         setUnits(level, pos, requested, null, session);
         scheduleAround(level, pos);
         return requested;
@@ -221,25 +256,33 @@ public final class FiniteWaterManager {
     }
 
     public static int tryPickupWaterUnits(Level level, BlockPos pos, int maxUnits) {
+        return tryPickupFluidUnits(level, pos, maxUnits, FiniteFluidKind.WATER);
+    }
+
+    public static int tryPickupFluidUnits(Level level, BlockPos pos, int maxUnits, FiniteFluidKind kind) {
         int requested = Math.min(maxUnits, BUCKET_UNITS) * MILLIBUCKETS_PER_UNIT;
-        return tryPickupWater(level, pos, requested, true) / MILLIBUCKETS_PER_UNIT;
+        return tryPickupFluid(level, pos, requested, true, kind) / MILLIBUCKETS_PER_UNIT;
     }
 
     public static int tryPickupWaterMillibuckets(Level level, BlockPos pos, int maxMillibuckets) {
-        return tryPickupWater(level, pos, maxMillibuckets, false);
+        return tryPickupFluidMillibuckets(level, pos, maxMillibuckets, FiniteFluidKind.WATER);
     }
 
-    private static int tryPickupWater(Level level, BlockPos pos, int maxMillibuckets, boolean wholePackets) {
-        if (level.isClientSide || maxMillibuckets <= 0 || !isOpenWater(level, pos)) {
+    public static int tryPickupFluidMillibuckets(Level level, BlockPos pos, int maxMillibuckets, FiniteFluidKind kind) {
+        return tryPickupFluid(level, pos, maxMillibuckets, false, kind);
+    }
+
+    private static int tryPickupFluid(Level level, BlockPos pos, int maxMillibuckets, boolean wholePackets, FiniteFluidKind kind) {
+        if (level.isClientSide || maxMillibuckets <= 0 || !isOpenFluid(level, pos, kind)) {
             return 0;
         }
-        Session session = session(level);
-        BodyKind kind = classify(level, pos, session);
+        Session session = session(level, kind);
+        BodyKind bodyKind = classify(level, pos, session);
         int requested = Math.min(maxMillibuckets, BUCKET_MILLIBUCKETS);
-        if (kind == BodyKind.LARGE) {
+        if (bodyKind == BodyKind.LARGE) {
             return requested;
         }
-        if (kind != BodyKind.FINITE) {
+        if (bodyKind != BodyKind.FINITE) {
             return 0;
         }
         Long2IntOpenHashMap component = collectComponent(level, pos, session);
@@ -288,13 +331,17 @@ public final class FiniteWaterManager {
     }
 
     public static BlockPos findBucketPickupPos(Level level, Player player, BlockHitResult hit, boolean scanCells) {
+        return findBucketPickupPos(level, player, hit, scanCells, FiniteFluidKind.WATER);
+    }
+
+    public static BlockPos findBucketPickupPos(Level level, Player player, BlockHitResult hit, boolean scanCells, FiniteFluidKind kind) {
         if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
             BlockPos hitPos = hit.getBlockPos();
-            if (isOpenWater(level, hitPos)) {
+            if (isOpenFluid(level, hitPos, kind)) {
                 return hitPos.immutable();
             }
             BlockPos adjacent = hitPos.relative(hit.getDirection());
-            if (isOpenWater(level, adjacent)) {
+            if (isOpenFluid(level, adjacent, kind)) {
                 return adjacent.immutable();
             }
         }
@@ -316,7 +363,7 @@ public final class FiniteWaterManager {
                 continue;
             }
             previous = pos;
-            if (isOpenWater(level, pos)) {
+            if (isOpenFluid(level, pos, kind)) {
                 return pos.immutable();
             }
         }
@@ -324,14 +371,16 @@ public final class FiniteWaterManager {
     }
 
     public static boolean handleTick(Level level, BlockPos pos, FluidState state) {
-        if (!state.is(FluidTags.WATER)) {
+        FiniteFluidKind stateKind = kindOf(state);
+        if (stateKind == null) {
             return false;
         }
         if (level.isClientSide) {
             return true;
         }
-        Session session = session(level);
-        if (!isOpenWater(level, pos)) {
+        FiniteFluidKind currentKind = kindAt(level, pos);
+        Session session = session(level, currentKind == null ? stateKind : currentKind);
+        if (!isOpenFluid(level, pos, session.kind())) {
             long key = pos.asLong();
             boolean changed = session.memory.finiteCells.remove(key);
             changed |= session.memory.volumes.remove(key) != 0;
@@ -355,24 +404,133 @@ public final class FiniteWaterManager {
         return true;
     }
 
-    private static void activate(Level level, BlockPos pos, Session session) {
-        if (!level.isLoaded(pos) || !isOpenWater(level, pos)) {
+    private static void activate(Level level, BlockPos pos, Session baseSession, boolean externalChange) {
+        FiniteFluidKind kind = kindAt(level, pos);
+        if (!level.isLoaded(pos) || kind == null) {
             return;
         }
+        Session session = baseSession.withKind(kind);
         long key = pos.asLong();
         session.memory.equalizationCooldown.remove(key);
         schedule(level, pos, 1);
         if (session.memory.finiteCells.contains(key)) {
+            if (externalChange) {
+                wakeComponent(level, pos, session);
+            }
             return;
         }
         if (session.memory.largeCells.get(key) > level.getGameTime()) {
             return;
         }
-        classify(level, pos, session);
+        if (classify(level, pos, session) == BodyKind.FINITE && externalChange) {
+            wakeComponent(level, pos, session);
+        }
+    }
+
+    private static void wakeComponent(Level level, BlockPos start, Session session) {
+        long now = level.getGameTime();
+        if (session.memory.componentWakeAt.get(start.asLong()) > now - COMPONENT_WAKE_INTERVAL_TICKS) {
+            return;
+        }
+        LongOpenHashSet visited = new LongOpenHashSet();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        visited.add(start.asLong());
+        queue.add(start);
+        while (!queue.isEmpty() && visited.size() <= COMPONENT_WAKE_MAX_CELLS) {
+            BlockPos current = queue.removeFirst();
+            long key = current.asLong();
+            session.memory.componentWakeAt.put(key, now);
+            session.memory.equalizationCooldown.remove(key);
+            schedule(level, current, 1);
+            for (Direction direction : Direction.values()) {
+                BlockPos neighbor = current.relative(direction);
+                long neighborKey = neighbor.asLong();
+                if (!visited.contains(neighborKey)
+                        && level.isLoaded(neighbor)
+                        && isOpenFluid(level, neighbor, session.kind())) {
+                    visited.add(neighborKey);
+                    queue.add(neighbor);
+                }
+            }
+        }
+    }
+
+    public static void tickSafetyWake(ServerLevel level) {
+        Session baseSession = session(level);
+        long now = level.getGameTime();
+        if (baseSession.memory.safetyScanTick != Long.MIN_VALUE
+                && now - baseSession.memory.safetyScanTick < SAFETY_SCAN_INTERVAL_TICKS) {
+            return;
+        }
+        baseSession.memory.safetyScanTick = now;
+        if (baseSession.memory.finiteCells.isEmpty()) {
+            return;
+        }
+        long[] cells = baseSession.memory.finiteCells.toLongArray();
+        int index = baseSession.memory.safetyScanOffset;
+        if (index < 0 || index >= cells.length) {
+            index = 0;
+        }
+        int scanned = 0;
+        int woken = 0;
+        while (scanned < SAFETY_SCAN_CELLS_PER_RUN && scanned < cells.length && woken < SAFETY_WAKE_PER_RUN) {
+            long key = cells[index];
+            index = (index + 1) % cells.length;
+            scanned++;
+            BlockPos pos = BlockPos.of(key);
+            if (!level.isLoaded(pos)) {
+                continue;
+            }
+            FiniteFluidKind kind = kindAt(level, pos);
+            if (kind == null) {
+                continue;
+            }
+            Session session = baseSession.withKind(kind);
+            if (needsSafetyWake(level, pos, session)) {
+                session.memory.equalizationCooldown.remove(key);
+                schedule(level, pos, 1);
+                woken++;
+            }
+        }
+        baseSession.memory.safetyScanOffset = index;
+    }
+
+    private static boolean needsSafetyWake(Level level, BlockPos pos, Session session) {
+        int units = volumeAt(level, pos, session, false);
+        if (units <= 0) {
+            return false;
+        }
+        if (canDrainDown(level, pos, session)) {
+            return true;
+        }
+        int ownSurface = pos.getY() * MAX_UNITS + columnHead(level, pos, session);
+        boolean surfaceCell = volumeAt(level, pos.above(), session, false) <= 0;
+        for (Direction direction : HORIZONTAL_DIRECTIONS) {
+            BlockPos neighbor = pos.relative(direction);
+            if (!level.isLoaded(neighbor)) {
+                continue;
+            }
+            if (isOpenFluid(level, neighbor, session.kind())) {
+                int neighborSurface = neighbor.getY() * MAX_UNITS + columnHead(level, neighbor, session);
+                if (Math.abs(neighborSurface - ownSurface) > 1) {
+                    return true;
+                }
+            } else if (surfaceCell
+                    && kindAt(level, neighbor) == null
+                    && volumeAt(level, neighbor, session, false) <= 0
+                    && canEnter(level, pos, direction, neighbor)) {
+                int ownHead = ownSurface - pos.getY() * MAX_UNITS;
+                int requiredDifference = ownHead > units ? MILLIBUCKETS_PER_UNIT : 2 * MILLIBUCKETS_PER_UNIT;
+                if (ownHead - sideTargetHead(level, neighbor, 0, session) >= requiredDifference) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static BodyKind classify(Level level, BlockPos start, Session session) {
-        if (!isOpenWater(level, start)) {
+        if (!isOpenFluid(level, start, session.kind())) {
             long key = start.asLong();
             boolean changed = session.memory.finiteCells.remove(key);
             changed |= session.memory.largeCells.remove(key) != Long.MIN_VALUE;
@@ -398,7 +556,7 @@ public final class FiniteWaterManager {
 
         while (!queue.isEmpty()) {
             BlockPos pos = queue.removeFirst();
-            if (!isOpenWater(level, pos)) {
+            if (!isOpenFluid(level, pos, session.kind())) {
                 continue;
             }
             long key = pos.asLong();
@@ -418,7 +576,7 @@ public final class FiniteWaterManager {
             for (Direction direction : Direction.values()) {
                 BlockPos neighbor = pos.relative(direction);
                 long neighborKey = neighbor.asLong();
-                if (visited.contains(neighborKey) || !level.isLoaded(neighbor) || !isOpenWater(level, neighbor)) {
+                if (visited.contains(neighborKey) || !level.isLoaded(neighbor) || !isOpenFluid(level, neighbor, session.kind())) {
                     continue;
                 }
                 if (overLimit && !session.memory.finiteCells.contains(neighborKey)) {
@@ -452,7 +610,7 @@ public final class FiniteWaterManager {
     }
 
     private static Long2IntOpenHashMap collectComponent(Level level, BlockPos start, Session session) {
-        if (!isOpenWater(level, start) || classify(level, start, session) != BodyKind.FINITE) {
+        if (!isOpenFluid(level, start, session.kind()) || classify(level, start, session) != BodyKind.FINITE) {
             return null;
         }
         LongOpenHashSet visited = new LongOpenHashSet();
@@ -464,7 +622,7 @@ public final class FiniteWaterManager {
         int total = 0;
         while (!queue.isEmpty()) {
             BlockPos pos = queue.removeFirst();
-            if (!isOpenWater(level, pos)) {
+            if (!isOpenFluid(level, pos, session.kind())) {
                 continue;
             }
             int units = volumeAt(level, pos, session, true);
@@ -481,7 +639,7 @@ public final class FiniteWaterManager {
                 long neighborKey = neighbor.asLong();
                 if (!visited.contains(neighborKey)
                         && level.isLoaded(neighbor)
-                        && isOpenWater(level, neighbor)) {
+                        && isOpenFluid(level, neighbor, session.kind())) {
                     visited.add(neighborKey);
                     queue.add(neighbor);
                 }
@@ -592,7 +750,7 @@ public final class FiniteWaterManager {
                 long targetKey = target.asLong();
                 if (desired.containsKey(targetKey)
                         || seen.contains(targetKey)
-                        || isOpenWater(level, target)
+                        || kindAt(level, target) != null
                         || !canEnter(level, from, direction, target)) {
                     continue;
                 }
@@ -653,7 +811,7 @@ public final class FiniteWaterManager {
         for (Direction direction : Direction.values()) {
             BlockPos neighbor = pos.relative(direction);
             if (level.isLoaded(neighbor)
-                    && isOpenWater(level, neighbor)
+                    && isOpenFluid(level, neighbor, session.kind())
                     && !session.memory.finiteCells.contains(neighbor.asLong())) {
                 return true;
             }
@@ -845,9 +1003,7 @@ public final class FiniteWaterManager {
                         return fluids;
                     }
                     if (units > 0) {
-                        if (session.memory.equalizationCooldown.get(neighborKey) <= now) {
-                            next.add(neighborKey);
-                        }
+                        next.add(neighborKey);
                     } else {
                         walls = true;
                     }
@@ -863,7 +1019,7 @@ public final class FiniteWaterManager {
                         if (fluids.size() > EQUALIZE_MAX_CELLS) {
                             return fluids;
                         }
-                        if (units > 0 && session.memory.equalizationCooldown.get(belowKey) <= now) {
+                        if (units > 0) {
                             next.add(belowKey);
                         }
                     }
@@ -1227,7 +1383,7 @@ public final class FiniteWaterManager {
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos neighbor = pos.relative(direction);
             if (!level.isLoaded(neighbor)
-                    || !isOpenWater(level, neighbor)
+                    || !isOpenFluid(level, neighbor, session.kind())
                     || session.memory.equalizedAt.get(neighbor.asLong()) == level.getGameTime()
                     || session.memory.flowOutAt.get(neighbor.asLong()) == level.getGameTime()) {
                 continue;
@@ -1455,11 +1611,11 @@ public final class FiniteWaterManager {
             changed |= session.memory.volumes.remove(key) != 0;
             session.memory.largeCells.remove(key);
             BlockState dryState = level.getBlockState(pos);
-            if (dryState.getBlock() instanceof DrainBlock) {
+            if (session.kind() == FiniteFluidKind.WATER && dryState.getBlock() instanceof DrainBlock) {
                 if (dryState.getValue(DrainBlock.LEVEL) != 0) {
                     level.setBlock(pos, dryState.setValue(DrainBlock.LEVEL, 0), 3);
                 }
-            } else if (isOpenWater(level, pos)) {
+            } else if (isOpenFluid(level, pos, session.kind())) {
                 level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
             }
             if (changed) {
@@ -1479,10 +1635,10 @@ public final class FiniteWaterManager {
             changed |= session.memory.volumes.remove(key) != 0;
             session.memory.largeCells.put(key, level.getGameTime() + LARGE_HINT_TICKS);
         }
-        FluidState newFluidState = fluidStateForUnits(clamped);
+        FluidState newFluidState = fluidStateForUnits(session.kind(), clamped);
         BlockState oldState = level.getBlockState(pos);
         BlockState newState = newFluidState.createLegacyBlock();
-        if (oldState.getBlock() instanceof DrainBlock) {
+        if (session.kind() == FiniteFluidKind.WATER && oldState.getBlock() instanceof DrainBlock) {
             int displayAmount = clamped >= MAX_UNITS
                     ? 8
                     : displayAmountForUnits(Math.max(1, Math.min(BUCKET_UNITS, clamped / MILLIBUCKETS_PER_UNIT)));
@@ -1491,8 +1647,8 @@ public final class FiniteWaterManager {
                 level.setBlock(pos, drainState, 3);
             }
         } else if (!oldState.equals(newState)) {
-            if (entryDirection != null && !oldState.is(Blocks.WATER) && !oldState.isAir()) {
-                ((FlowingFluidAccess) (Object) Fluids.FLOWING_WATER).flyDrone$spreadTo(level, pos, oldState, entryDirection, newFluidState);
+            if (entryDirection != null && !isOpenFluid(level, pos, session.kind()) && !oldState.isAir()) {
+                ((FlowingFluidAccess) (Object) flowingFluid(session.kind())).flyDrone$spreadTo(level, pos, oldState, entryDirection, newFluidState);
             } else {
                 level.setBlock(pos, newState, 3);
             }
@@ -1502,12 +1658,12 @@ public final class FiniteWaterManager {
         }
     }
 
-    private static FluidState fluidStateForUnits(int units) {
+    private static FluidState fluidStateForUnits(FiniteFluidKind kind, int units) {
         if (units >= MAX_UNITS) {
-            return Fluids.WATER.getSource(false);
+            return sourceFluid(kind).getSource(false);
         }
         int displayUnits = Math.max(1, Math.min(BUCKET_UNITS, units / MILLIBUCKETS_PER_UNIT));
-        return Fluids.FLOWING_WATER.getFlowing(displayAmountForUnits(displayUnits), false);
+        return flowingFluid(kind).getFlowing(displayAmountForUnits(displayUnits), false);
     }
 
     private static int displayAmountForUnits(int units) {
@@ -1534,6 +1690,9 @@ public final class FiniteWaterManager {
 
     private static int volumeAt(Level level, BlockPos pos, Session session, boolean remember) {
         BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof DrainBlock && session.kind() != FiniteFluidKind.WATER) {
+            return 0;
+        }
         if (state.getBlock() instanceof DrainBlock) {
             long drainKey = pos.asLong();
             if (state.getValue(DrainBlock.LEVEL) <= 0) {
@@ -1553,15 +1712,16 @@ public final class FiniteWaterManager {
             }
             return inferredDrain;
         }
-        if (!state.is(Blocks.WATER)) {
-            if (remember && session.memory.volumes.remove(pos.asLong()) != 0) {
+        FiniteFluidKind stateKind = kindOf(state);
+        if (stateKind != session.kind()) {
+            if (remember && stateKind == null && session.memory.volumes.remove(pos.asLong()) != 0) {
                 session.markDirty();
             }
             return 0;
         }
         long key = pos.asLong();
         int stored = Math.min(MAX_UNITS, session.memory.volumes.get(key));
-        if (stored > 0 && state.equals(fluidStateForUnits(stored).createLegacyBlock())) {
+        if (stored > 0 && state.equals(fluidStateForUnits(session.kind(), stored).createLegacyBlock())) {
             return stored;
         }
         int inferred = inferredUnits(state.getFluidState());
@@ -1577,10 +1737,17 @@ public final class FiniteWaterManager {
             return false;
         }
         BlockState toState = level.getBlockState(to);
-        if (toState.is(Blocks.WATER)) {
+        FiniteFluidKind kind = kindAt(level, from);
+        if (kind == null) {
+            kind = kindOf(toState);
+        }
+        if (kind == null) {
+            kind = FiniteFluidKind.WATER;
+        }
+        if (isOpenFluid(level, to, kind)) {
             return true;
         }
-        if (toState.getBlock() instanceof DrainBlock) {
+        if (kind == FiniteFluidKind.WATER && toState.getBlock() instanceof DrainBlock) {
             return true;
         }
         FluidState toFluidState = toState.getFluidState();
@@ -1588,8 +1755,8 @@ public final class FiniteWaterManager {
             return false;
         }
         BlockState fromState = level.getBlockState(from);
-        return ((FlowingFluidAccess) (Object) Fluids.FLOWING_WATER)
-                .flyDrone$canSpreadTo(level, from, fromState, direction, to, toState, toFluidState, Fluids.WATER);
+        return ((FlowingFluidAccess) (Object) flowingFluid(kind))
+                .flyDrone$canSpreadTo(level, from, fromState, direction, to, toState, toFluidState, sourceFluid(kind));
     }
 
     private static int columnHead(Level level, BlockPos pos, Session session) {
@@ -1618,7 +1785,7 @@ public final class FiniteWaterManager {
 
     private static void schedule(Level level, BlockPos pos, int delay) {
         FluidState state = level.getFluidState(pos);
-        if (state.is(FluidTags.WATER)) {
+        if (isManagedFluid(state)) {
             level.scheduleTick(pos, state.getType(), delay);
         }
     }
@@ -1637,36 +1804,84 @@ public final class FiniteWaterManager {
         }
     }
 
-    private static boolean canPlaceIntoEmpty(Level level, BlockPos pos) {
+    private static boolean canPlaceIntoEmpty(Level level, BlockPos pos, FiniteFluidKind kind) {
         if (!level.isLoaded(pos)) {
             return false;
         }
         BlockState state = level.getBlockState(pos);
         if (state.getBlock() instanceof DrainBlock) {
-            return state.getValue(DrainBlock.LEVEL) == 0;
+            return kind == FiniteFluidKind.WATER && state.getValue(DrainBlock.LEVEL) == 0;
         }
         return state.getFluidState().isEmpty()
                 && !(state.getBlock() instanceof LiquidBlockContainer)
                 && (state.isAir() || state.canBeReplaced());
     }
 
+    public static FiniteFluidKind kindAt(BlockGetter level, BlockPos pos) {
+        return kindOf(level.getBlockState(pos));
+    }
+
+    public static boolean isManagedFluid(FluidState state) {
+        return kindOf(state) != null;
+    }
+
+    private static FiniteFluidKind kindOf(BlockState state) {
+        if (state.is(Blocks.WATER) || isWetDrain(state)) {
+            return FiniteFluidKind.WATER;
+        }
+        return kindOf(state.getFluidState());
+    }
+
+    private static FiniteFluidKind kindOf(FluidState state) {
+        if (state.is(FluidTags.WATER)) {
+            return FiniteFluidKind.WATER;
+        }
+        if (!state.isEmpty()
+                && (state.getType() == RadioactiveWater.SOURCE.get()
+                || state.getType() == RadioactiveWater.FLOWING.get())) {
+            return FiniteFluidKind.RADIOACTIVE_WATER;
+        }
+        return null;
+    }
+
+    private static boolean isOpenFluid(BlockGetter level, BlockPos pos, FiniteFluidKind kind) {
+        return kind != null && kindAt(level, pos) == kind;
+    }
+
     private static boolean isOpenWater(BlockGetter level, BlockPos pos) {
-        BlockState state = level.getBlockState(pos);
-        return state.is(Blocks.WATER) || isWetDrain(state);
+        return isOpenFluid(level, pos, FiniteFluidKind.WATER);
     }
 
     private static boolean isWetDrain(BlockState state) {
         return state.getBlock() instanceof DrainBlock && state.getValue(DrainBlock.LEVEL) > 0;
     }
 
+    private static FlowingFluid sourceFluid(FiniteFluidKind kind) {
+        return kind == FiniteFluidKind.RADIOACTIVE_WATER ? RadioactiveWater.SOURCE.get() : Fluids.WATER;
+    }
+
+    private static FlowingFluid flowingFluid(FiniteFluidKind kind) {
+        return kind == FiniteFluidKind.RADIOACTIVE_WATER ? RadioactiveWater.FLOWING.get() : Fluids.FLOWING_WATER;
+    }
+
     private static Session session(Level level) {
+        return session(level, FiniteFluidKind.WATER);
+    }
+
+    private static Session session(Level level, FiniteFluidKind kind) {
+        FiniteFluidKind actualKind = kind == null ? FiniteFluidKind.WATER : kind;
         if (level instanceof ServerLevel serverLevel) {
             FiniteWaterData data = FiniteWaterData.get(serverLevel);
-            return new Session(data.memory(), data);
+            return new Session(data.memory(), data, actualKind);
         }
         synchronized (CLIENT_MEMORY) {
-            return new Session(CLIENT_MEMORY.computeIfAbsent(level, ignored -> new FiniteWaterData.Memory()), null);
+            return new Session(CLIENT_MEMORY.computeIfAbsent(level, ignored -> new FiniteWaterData.Memory()), null, actualKind);
         }
+    }
+
+    public enum FiniteFluidKind {
+        WATER,
+        RADIOACTIVE_WATER
     }
 
     private enum BodyKind {
@@ -1678,7 +1893,11 @@ public final class FiniteWaterManager {
     private record FlowCandidate(BlockPos pos, Direction direction, int targetHead) {
     }
 
-    private record Session(FiniteWaterData.Memory memory, FiniteWaterData data) {
+    private record Session(FiniteWaterData.Memory memory, FiniteWaterData data, FiniteFluidKind kind) {
+        Session withKind(FiniteFluidKind newKind) {
+            return new Session(this.memory, this.data, newKind == null ? FiniteFluidKind.WATER : newKind);
+        }
+
         void markDirty() {
             if (this.data != null) {
                 this.data.setDirty();

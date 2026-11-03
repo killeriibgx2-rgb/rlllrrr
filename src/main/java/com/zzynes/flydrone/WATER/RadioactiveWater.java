@@ -50,7 +50,6 @@ public final class RadioactiveWater {
             .canConvertToSource(false)
             .supportsBoating(true)
             .canHydrate(false)
-            .lightLevel(6)
             .density(1000)
             .viscosity(1000)
             .temperature(300)
@@ -101,8 +100,7 @@ public final class RadioactiveWater {
 
     public static final RegistryObject<LiquidBlock> BLOCK =
             BLOCKS.register("radioactive_water", () -> new LiquidBlock(SOURCE, BlockBehaviour.Properties.copy(Blocks.WATER)
-                    .mapColor(MapColor.COLOR_GREEN)
-                    .lightLevel(state -> 6)));
+                    .mapColor(MapColor.COLOR_GREEN)));
 
     public static final RegistryObject<Item> BUCKET =
             ITEMS.register("radioactive_water_bucket", () -> new BucketItem(SOURCE, new Item.Properties()
@@ -119,7 +117,7 @@ public final class RadioactiveWater {
                 .slopeFindDistance(4)
                 .levelDecreasePerBlock(1)
                 .explosionResistance(100.0F)
-                .tickRate(5);
+                .tickRate(2);
     }
 
     public static void register(IEventBus eventBus) {

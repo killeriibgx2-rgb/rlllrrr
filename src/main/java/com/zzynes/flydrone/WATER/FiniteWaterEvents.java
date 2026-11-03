@@ -9,7 +9,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -19,6 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.FillBucketEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
@@ -39,8 +39,18 @@ public final class FiniteWaterEvents {
     }
 
     @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        for (ServerLevel level : event.getServer().getAllLevels()) {
+            FiniteWaterManager.tickSafetyWake(level);
+        }
+    }
+
+    @SubscribeEvent
     public static void onCreateFluidSource(BlockEvent.CreateFluidSourceEvent event) {
-        if (event.getState().getFluidState().is(FluidTags.WATER)
+        if (FiniteWaterManager.isManagedFluid(event.getState().getFluidState())
                 && FiniteWaterManager.isFiniteAt(event.getLevel(), event.getPos())) {
             event.setResult(Event.Result.DENY);
         }
@@ -55,7 +65,24 @@ public final class FiniteWaterEvents {
         Player player = event.getEntity();
         HitResult hit = player.pick(player.isCreative() ? 5.0D : 4.5D, 1.0F, true);
         BlockHitResult blockHit = hit instanceof BlockHitResult result ? result : null;
-        BlockPos pos = FiniteWaterManager.findBucketPickupPos(level, player, blockHit, true);
+        FiniteWaterManager.FiniteFluidKind kind = null;
+        if (blockHit != null) {
+            kind = FiniteWaterManager.kindAt(level, blockHit.getBlockPos());
+            if (kind == null) {
+                kind = FiniteWaterManager.kindAt(level, blockHit.getBlockPos().relative(blockHit.getDirection()));
+            }
+        }
+        BlockPos pos;
+        if (kind != null) {
+            pos = FiniteWaterManager.findBucketPickupPos(level, player, blockHit, true, kind);
+        } else {
+            kind = FiniteWaterManager.FiniteFluidKind.WATER;
+            pos = FiniteWaterManager.findBucketPickupPos(level, player, blockHit, true, kind);
+            if (pos == null) {
+                kind = FiniteWaterManager.FiniteFluidKind.RADIOACTIVE_WATER;
+                pos = FiniteWaterManager.findBucketPickupPos(level, player, blockHit, true, kind);
+            }
+        }
         if (pos == null || level.getFluidState(pos).isSource()) {
             return;
         }
@@ -64,11 +91,11 @@ public final class FiniteWaterEvents {
                 || !player.mayUseItemAt(pos, face, event.getEmptyBucket())) {
             return;
         }
-        int pickedMillibuckets = FiniteWaterManager.tryPickupWaterMillibuckets(level, pos, FiniteWaterManager.BUCKET_MILLIBUCKETS);
+        int pickedMillibuckets = FiniteWaterManager.tryPickupFluidMillibuckets(level, pos, FiniteWaterManager.BUCKET_MILLIBUCKETS, kind);
         if (pickedMillibuckets <= 0) {
             return;
         }
-        ItemStack filled = PartialWaterBucketItem.stackForMillibuckets(pickedMillibuckets);
+        ItemStack filled = PartialWaterBucketItem.stackForMillibuckets(pickedMillibuckets, kind);
         event.setFilledBucket(filled);
         event.setResult(Event.Result.ALLOW);
         if (player.getAbilities().instabuild) {
@@ -85,7 +112,12 @@ public final class FiniteWaterEvents {
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         ItemStack stack = event.getItemStack();
-        if (!stack.is(Items.WATER_BUCKET)) {
+        FiniteWaterManager.FiniteFluidKind kind;
+        if (stack.is(Items.WATER_BUCKET)) {
+            kind = FiniteWaterManager.FiniteFluidKind.WATER;
+        } else if (stack.is(RadioactiveWater.BUCKET.get())) {
+            kind = FiniteWaterManager.FiniteFluidKind.RADIOACTIVE_WATER;
+        } else {
             return;
         }
         Level level = event.getLevel();
@@ -96,7 +128,7 @@ public final class FiniteWaterEvents {
                 || !player.mayUseItemAt(placement, face, stack)) {
             return;
         }
-        if (!FiniteWaterManager.canAddWaterMillibuckets(level, placement, FiniteWaterManager.BUCKET_MILLIBUCKETS)) {
+        if (!FiniteWaterManager.canAddFluidMillibuckets(level, placement, FiniteWaterManager.BUCKET_MILLIBUCKETS, kind)) {
             return;
         }
         event.setCanceled(true);
@@ -104,14 +136,14 @@ public final class FiniteWaterEvents {
         if (level.isClientSide) {
             return;
         }
-        int addedMillibuckets = FiniteWaterManager.tryAddWaterMillibuckets(level, placement, FiniteWaterManager.BUCKET_MILLIBUCKETS);
+        int addedMillibuckets = FiniteWaterManager.tryAddFluidMillibuckets(level, placement, FiniteWaterManager.BUCKET_MILLIBUCKETS, kind);
         if (addedMillibuckets <= 0) {
             return;
         }
         if (!player.getAbilities().instabuild) {
-            player.setItemInHand(event.getHand(), PartialWaterBucketItem.stackForMillibuckets(FiniteWaterManager.BUCKET_MILLIBUCKETS - addedMillibuckets));
+            player.setItemInHand(event.getHand(), PartialWaterBucketItem.stackForMillibuckets(FiniteWaterManager.BUCKET_MILLIBUCKETS - addedMillibuckets, kind));
         }
-        player.awardStat(Stats.ITEM_USED.get(Items.WATER_BUCKET));
+        player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
         level.playSound(player, placement, SoundEvents.BUCKET_EMPTY, SoundSource.BLOCKS, 1.0F, 1.0F);
         level.gameEvent(player, GameEvent.FLUID_PLACE, placement);
         if (player instanceof ServerPlayer serverPlayer) {

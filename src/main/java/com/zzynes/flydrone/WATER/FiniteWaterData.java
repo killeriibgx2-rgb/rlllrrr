@@ -73,10 +73,13 @@ public class FiniteWaterData extends SavedData {
         final Long2LongOpenHashMap flowInAt = new Long2LongOpenHashMap();
         final Long2LongOpenHashMap flowOutAt = new Long2LongOpenHashMap();
         final Long2LongOpenHashMap equalizationCooldown = new Long2LongOpenHashMap();
+        final Long2LongOpenHashMap componentWakeAt = new Long2LongOpenHashMap();
         long equalizationTaskTick = Long.MIN_VALUE;
         int equalizationTasksThisTick;
         long pressureSearchTick = Long.MIN_VALUE;
         int pressureSearchesThisTick;
+        long safetyScanTick = Long.MIN_VALUE;
+        int safetyScanOffset;
 
         Memory() {
             this.largeCells.defaultReturnValue(Long.MIN_VALUE);
@@ -85,6 +88,7 @@ public class FiniteWaterData extends SavedData {
             this.flowInAt.defaultReturnValue(Long.MIN_VALUE);
             this.flowOutAt.defaultReturnValue(Long.MIN_VALUE);
             this.equalizationCooldown.defaultReturnValue(Long.MIN_VALUE);
+            this.componentWakeAt.defaultReturnValue(Long.MIN_VALUE);
         }
     }
 }

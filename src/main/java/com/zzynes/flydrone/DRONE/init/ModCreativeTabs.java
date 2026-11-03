@@ -5,6 +5,7 @@ import com.zzynes.flydrone.Domm.DommRegistry;
 import com.zzynes.flydrone.Radio.RadioMod;
 import com.zzynes.flydrone.VVER.VverRegistry;
 import com.zzynes.flydrone.WATER.FiniteWaterBlocks;
+import com.zzynes.flydrone.WATER.FiniteWaterManager;
 import com.zzynes.flydrone.WATER.PartialWaterBucketItem;
 import com.zzynes.flydrone.WATER.RadioactiveWater;
 import net.minecraft.core.registries.Registries;
@@ -66,6 +67,7 @@ public class ModCreativeTabs {
                         output.accept(PartialWaterBucketItem.stackForUnits(5));
                         output.accept(FiniteWaterBlocks.DRAIN_ITEM.get());
                         output.accept(RadioactiveWater.BUCKET.get());
+                        output.accept(PartialWaterBucketItem.stackForUnits(5, FiniteWaterManager.FiniteFluidKind.RADIOACTIVE_WATER));
                     })
                     .build());
 
