@@ -131,6 +131,16 @@ public class VverRegistry {
     public static final RegistryObject<Item> CROSS_PIPE_ITEM =
             ITEMS.register("vver_x_shaped_pipe", () -> new BlockItem(CROSS_PIPE_BLOCK.get(), new Item.Properties()));
 
+    public static final RegistryObject<Block> VALVE_BLOCK =
+            BLOCKS.register("vver_valve", ValveBlock::new);
+
+    public static final RegistryObject<Item> VALVE_ITEM =
+            ITEMS.register("vver_valve", () -> new BlockItem(VALVE_BLOCK.get(), new Item.Properties()));
+
+    @SuppressWarnings("ConstantConditions")
+    public static final RegistryObject<BlockEntityType<ValveBlockEntity>> VALVE_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("vver_valve", () -> BlockEntityType.Builder.of(ValveBlockEntity::new, VALVE_BLOCK.get()).build(null));
+
     public static final RegistryObject<Item> CORE_FILLER_ITEM =
             ITEMS.register("vver_core_filler", CoreFillerItem::new);
 
@@ -160,6 +170,7 @@ public class VverRegistry {
                 event.accept(CORNER_PIPE_ITEM.get());
                 event.accept(TEE_PIPE_ITEM.get());
                 event.accept(CROSS_PIPE_ITEM.get());
+                event.accept(VALVE_ITEM.get());
                 event.accept(CORE_FILLER_ITEM.get());
                 event.accept(PRESSURE_STICK_ITEM.get());
             }

@@ -254,6 +254,9 @@ public final class PipePressureManager {
     }
 
     private static boolean isOpenBoundary(ServerLevel level, BlockPos pos, BlockState state) {
+        if (PipePorts.isClosedValve(state)) {
+            return false;
+        }
         if (state.isAir() || PipePorts.isPipe(state)) {
             return true;
         }

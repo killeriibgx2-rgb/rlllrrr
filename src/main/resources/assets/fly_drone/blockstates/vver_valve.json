@@ -1,0 +1,24 @@
+{
+  "variants": {
+    "axis=x,open=false": {
+      "model": "fly_drone:block/vver_valve"
+    },
+    "axis=x,open=true": {
+      "model": "fly_drone:block/vver_valve"
+    },
+    "axis=y,open=false": {
+      "model": "fly_drone:block/vver_valve_vertical"
+    },
+    "axis=y,open=true": {
+      "model": "fly_drone:block/vver_valve_vertical"
+    },
+    "axis=z,open=false": {
+      "model": "fly_drone:block/vver_valve",
+      "y": 90
+    },
+    "axis=z,open=true": {
+      "model": "fly_drone:block/vver_valve",
+      "y": 90
+    }
+  }
+}

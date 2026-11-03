@@ -22,6 +22,7 @@ public class VverClient {
     public static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
         event.register(SuzBlockEntityRenderer.RODS_MODEL_LOC);
         event.register(SuzBlockEntityRenderer.RODS_LOD_MODEL_LOC);
+        event.register(ValveBlockEntityRenderer.WHEEL_MODEL_LOC);
     }
 
     @SubscribeEvent
@@ -59,5 +60,6 @@ public class VverClient {
         event.registerBlockEntityRenderer(VverRegistry.BSHU_BLOCK_ENTITY.get(), BshuBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(VverRegistry.GCN_BLOCK_ENTITY.get(), GcnBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(VverRegistry.STEAM_GENERATOR_BLOCK_ENTITY.get(), SteamGeneratorBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(VverRegistry.VALVE_BLOCK_ENTITY.get(), ValveBlockEntityRenderer::new);
     }
 }
