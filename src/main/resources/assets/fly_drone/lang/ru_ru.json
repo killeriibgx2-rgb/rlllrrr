@@ -46,6 +46,7 @@
   "key.fly_drone.radio_menu": "Меню рации",
   "item.fly_drone.handheld_siren": "Ручная сирена",
   "item.fly_drone.partial_water_bucket": "Неполное ведро воды",
+  "item.fly_drone.partial_radioactive_water_bucket": "Неполное ведро радиоактивной воды",
   "fluid.fly_drone.radioactive_water": "Радиоактивная вода",
   "fluid_type.fly_drone.radioactive_water": "Радиоактивная вода",
   "block.fly_drone.radioactive_water": "Радиоактивная вода",

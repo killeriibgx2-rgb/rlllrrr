@@ -14,6 +14,9 @@ public final class FiniteWaterItems {
     public static final RegistryObject<Item> PARTIAL_WATER_BUCKET =
             ITEMS.register("partial_water_bucket", PartialWaterBucketItem::new);
 
+    public static final RegistryObject<Item> PARTIAL_RADIOACTIVE_WATER_BUCKET =
+            ITEMS.register("partial_radioactive_water_bucket", () -> new PartialWaterBucketItem(FiniteWaterManager.FiniteFluidKind.RADIOACTIVE_WATER));
+
     private FiniteWaterItems() {
     }
 
