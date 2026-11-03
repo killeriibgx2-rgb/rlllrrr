@@ -553,6 +553,8 @@ public final class FiniteWaterManager {
         queue.add(start);
         int volume = 0;
         boolean overLimit = false;
+        boolean scanLimit = false;
+        boolean grounded = hasGroundedColumn(level, start, session);
 
         while (!queue.isEmpty()) {
             BlockPos pos = queue.removeFirst();
@@ -563,15 +565,24 @@ public final class FiniteWaterManager {
             if (session.memory.largeCells.get(key) > now) {
                 overLimit = true;
             }
+            if (!grounded) {
+                BlockPos below = pos.below();
+                grounded = level.isLoaded(below)
+                        && !isOpenFluid(level, below, session.kind())
+                        && !canDrainDown(level, pos, session);
+            }
             int cellUnits = volumeAt(level, pos, session, false);
             if (cellUnits > 0) {
                 scannedVolumes.put(key, cellUnits);
             }
             if (!overLimit) {
                 volume += cellUnits;
-                if (volume >= MAX_BODY_UNITS || visited.size() > MAX_SCAN_CELLS) {
+                if (volume >= MAX_BODY_UNITS) {
                     overLimit = true;
                 }
+            }
+            if (visited.size() > MAX_SCAN_CELLS) {
+                scanLimit = true;
             }
             for (Direction direction : Direction.values()) {
                 BlockPos neighbor = pos.relative(direction);
@@ -579,7 +590,7 @@ public final class FiniteWaterManager {
                 if (visited.contains(neighborKey) || !level.isLoaded(neighbor) || !isOpenFluid(level, neighbor, session.kind())) {
                     continue;
                 }
-                if (overLimit && !session.memory.finiteCells.contains(neighborKey)) {
+                if (scanLimit || (overLimit && grounded && !session.memory.finiteCells.contains(neighborKey))) {
                     continue;
                 }
                 visited.add(neighborKey);
@@ -587,7 +598,7 @@ public final class FiniteWaterManager {
             }
         }
 
-        if (overLimit) {
+        if (scanLimit || (overLimit && grounded)) {
             LongIterator iterator = visited.iterator();
             while (iterator.hasNext()) {
                 long cell = iterator.nextLong();
@@ -607,6 +618,24 @@ public final class FiniteWaterManager {
         session.memory.volumes.putAll(scannedVolumes);
         session.markDirty();
         return BodyKind.FINITE;
+    }
+
+    private static boolean hasGroundedColumn(Level level, BlockPos start, Session session) {
+        BlockPos cursor = start;
+        for (int i = 0; i < 512; i++) {
+            if (!level.isLoaded(cursor) || !isOpenFluid(level, cursor, session.kind())) {
+                return false;
+            }
+            BlockPos below = cursor.below();
+            if (!level.isLoaded(below)) {
+                return false;
+            }
+            if (!isOpenFluid(level, below, session.kind())) {
+                return !canDrainDown(level, cursor, session);
+            }
+            cursor = below;
+        }
+        return false;
     }
 
     private static Long2IntOpenHashMap collectComponent(Level level, BlockPos start, Session session) {
