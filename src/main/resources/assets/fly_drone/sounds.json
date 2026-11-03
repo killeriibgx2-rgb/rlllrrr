@@ -6,5 +6,10 @@
         "stream": true
       }
     ]
+  },
+  "block.vver_valve.turn": {
+    "sounds": [
+      "fly_drone:vver_valve_turn"
+    ]
   }
 }

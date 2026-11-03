@@ -4,6 +4,7 @@ import com.zzynes.flydrone.DRONE.FlyDroneMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -29,6 +30,8 @@ public class VverRegistry {
             DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, FlyDroneMod.MOD_ID);
     public static final DeferredRegister<MenuType<?>> MENUS =
             DeferredRegister.create(ForgeRegistries.MENU_TYPES, FlyDroneMod.MOD_ID);
+    public static final DeferredRegister<SoundEvent> SOUND_EVENTS =
+            DeferredRegister.create(ForgeRegistries.SOUND_EVENTS, FlyDroneMod.MOD_ID);
 
     public static final RegistryObject<Block> SUZ_BLOCK =
             BLOCKS.register("vver_suz", SuzBlock::new);
@@ -141,6 +144,10 @@ public class VverRegistry {
     public static final RegistryObject<BlockEntityType<ValveBlockEntity>> VALVE_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("vver_valve", () -> BlockEntityType.Builder.of(ValveBlockEntity::new, VALVE_BLOCK.get()).build(null));
 
+    public static final RegistryObject<SoundEvent> VALVE_TURN_SOUND =
+            SOUND_EVENTS.register("block.vver_valve.turn",
+                    () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(FlyDroneMod.MOD_ID, "block.vver_valve.turn")));
+
     public static final RegistryObject<Item> CORE_FILLER_ITEM =
             ITEMS.register("vver_core_filler", CoreFillerItem::new);
 
@@ -152,6 +159,7 @@ public class VverRegistry {
         ITEMS.register(eventBus);
         BLOCK_ENTITIES.register(eventBus);
         MENUS.register(eventBus);
+        SOUND_EVENTS.register(eventBus);
         eventBus.addListener((FMLCommonSetupEvent event) -> VverNetwork.register());
         eventBus.addListener((BuildCreativeModeTabContentsEvent event) -> {
             ResourceKey<CreativeModeTab> flyDroneTab = ResourceKey.create(
