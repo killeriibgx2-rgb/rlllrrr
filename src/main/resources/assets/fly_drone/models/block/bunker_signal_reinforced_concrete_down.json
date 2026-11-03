@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "fly_drone:block/rust_grid",
+    "top": "fly_drone:block/rust_grid",
+    "side": "fly_drone:block/beton_razmetka_down",
+    "particle": "fly_drone:block/beton_razmetka_down"
+  }
+}

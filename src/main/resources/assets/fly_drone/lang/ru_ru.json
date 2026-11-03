@@ -1,5 +1,5 @@
 {
-  "itemGroup.fly_drone": "Fly Drone",
+  "itemGroup.fly_drone": "Sarcophag",
 
   "item.fly_drone.aluminum_ingot": "Алюминиевый слиток",
   "item.fly_drone.lithium_ingot": "Литиевый слиток",
@@ -38,11 +38,23 @@
   "block.fly_drone.sandbag_sand_green": "Мешок с песком (лесной)",
   "block.fly_drone.sandbag_dirt_sand": "Мешок с землёй (песчанка)",
   "block.fly_drone.sandbag_sand_sand": "Мешок с песком (песчанка)",
+  "block.fly_drone.bunker_concrete": "Бункерный бетон",
+  "block.fly_drone.bunker_concrete_dense": "Плотный бункерный бетон",
+  "block.fly_drone.bunker_reinforced_concrete": "Бункерный бетон с арматурой",
+  "block.fly_drone.bunker_reinforced_concrete_dense": "Плотный бункерный бетон с арматурой",
+  "block.fly_drone.bunker_signal_concrete_up": "Сигнальный бункерный бетон (верхняя разметка)",
+  "block.fly_drone.bunker_signal_concrete_down": "Сигнальный бункерный бетон (нижняя разметка)",
+  "block.fly_drone.bunker_signal_concrete_up_dense": "Плотный сигнальный бункерный бетон (верхняя разметка)",
+  "block.fly_drone.bunker_signal_concrete_down_dense": "Плотный сигнальный бункерный бетон (нижняя разметка)",
+  "block.fly_drone.bunker_signal_reinforced_concrete_up": "Сигнальный бункерный бетон с арматурой (верхняя разметка)",
+  "block.fly_drone.bunker_signal_reinforced_concrete_down": "Сигнальный бункерный бетон с арматурой (нижняя разметка)",
+  "block.fly_drone.bunker_signal_reinforced_concrete_up_dense": "Плотный сигнальный бункерный бетон с арматурой (верхняя разметка)",
+  "block.fly_drone.bunker_signal_reinforced_concrete_down_dense": "Плотный сигнальный бункерный бетон с арматурой (нижняя разметка)",
 
   "entity.fly_drone.fpv_drone": "FPV Дрон",
   "entity.fly_drone.rpg_projectile": "Снаряд РПГ-74",
 
-  "key.categories.fly_drone": "Fly Drone",
+  "key.categories.fly_drone": "Sarcophag",
   "key.fly_drone.radio_menu": "Меню рации",
   "item.fly_drone.handheld_siren": "Ручная сирена",
   "item.fly_drone.partial_water_bucket": "Неполное ведро воды",
