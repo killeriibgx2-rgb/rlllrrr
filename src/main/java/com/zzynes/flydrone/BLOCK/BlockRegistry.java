@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -51,6 +52,53 @@ public class BlockRegistry {
 
     public static final RegistryObject<Item> SANDBAG_SAND_SAND_ITEM = ITEMS.register("sandbag_sand_sand",
             () -> new BlockItem(SANDBAG_SAND_SAND.get(), new Item.Properties()));
+
+    public static final RegistryObject<Block> BUNKER_CONCRETE =
+            registerConcrete("bunker_concrete", MapColor.STONE, 5.0f, 12.0f);
+
+    public static final RegistryObject<Block> BUNKER_CONCRETE_DENSE =
+            registerConcrete("bunker_concrete_dense", MapColor.COLOR_GRAY, 7.0f, 18.0f);
+
+    public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE =
+            registerConcrete("bunker_reinforced_concrete", MapColor.STONE, 8.0f, 24.0f);
+
+    public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE_DENSE =
+            registerConcrete("bunker_reinforced_concrete_dense", MapColor.COLOR_GRAY, 10.0f, 32.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_CONCRETE_UP =
+            registerConcrete("bunker_signal_concrete_up", MapColor.STONE, 5.0f, 12.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_CONCRETE_DOWN =
+            registerConcrete("bunker_signal_concrete_down", MapColor.STONE, 5.0f, 12.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_CONCRETE_UP_DENSE =
+            registerConcrete("bunker_signal_concrete_up_dense", MapColor.COLOR_GRAY, 7.0f, 18.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_CONCRETE_DOWN_DENSE =
+            registerConcrete("bunker_signal_concrete_down_dense", MapColor.COLOR_GRAY, 7.0f, 18.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_REINFORCED_CONCRETE_UP =
+            registerConcrete("bunker_signal_reinforced_concrete_up", MapColor.STONE, 8.0f, 24.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_REINFORCED_CONCRETE_DOWN =
+            registerConcrete("bunker_signal_reinforced_concrete_down", MapColor.STONE, 8.0f, 24.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_REINFORCED_CONCRETE_UP_DENSE =
+            registerConcrete("bunker_signal_reinforced_concrete_up_dense", MapColor.COLOR_GRAY, 10.0f, 32.0f);
+
+    public static final RegistryObject<Block> BUNKER_SIGNAL_REINFORCED_CONCRETE_DOWN_DENSE =
+            registerConcrete("bunker_signal_reinforced_concrete_down_dense", MapColor.COLOR_GRAY, 10.0f, 32.0f);
+
+    private static RegistryObject<Block> registerConcrete(String name, MapColor mapColor, float destroyTime, float explosionResistance) {
+        RegistryObject<Block> block = BLOCKS.register(name,
+                () -> new Block(BlockBehaviour.Properties.copy(Blocks.STONE)
+                        .mapColor(mapColor)
+                        .sound(SoundType.STONE)
+                        .strength(destroyTime, explosionResistance)
+                        .requiresCorrectToolForDrops()));
+        ITEMS.register(name, () -> new BlockItem(block.get(), new Item.Properties()));
+        return block;
+    }
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);

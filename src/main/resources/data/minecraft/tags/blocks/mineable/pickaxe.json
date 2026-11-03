@@ -12,6 +12,18 @@
     "fly_drone:vver_t_shaped_pipe",
     "fly_drone:vver_x_shaped_pipe",
     "fly_drone:vver_valve",
-    "fly_drone:drain"
+    "fly_drone:drain",
+    "fly_drone:bunker_concrete",
+    "fly_drone:bunker_concrete_dense",
+    "fly_drone:bunker_reinforced_concrete",
+    "fly_drone:bunker_reinforced_concrete_dense",
+    "fly_drone:bunker_signal_concrete_up",
+    "fly_drone:bunker_signal_concrete_down",
+    "fly_drone:bunker_signal_concrete_up_dense",
+    "fly_drone:bunker_signal_concrete_down_dense",
+    "fly_drone:bunker_signal_reinforced_concrete_up",
+    "fly_drone:bunker_signal_reinforced_concrete_down",
+    "fly_drone:bunker_signal_reinforced_concrete_up_dense",
+    "fly_drone:bunker_signal_reinforced_concrete_down_dense"
   ]
 }

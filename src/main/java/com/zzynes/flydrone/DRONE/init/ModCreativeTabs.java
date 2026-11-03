@@ -63,6 +63,18 @@ public class ModCreativeTabs {
                         output.accept(BlockRegistry.SANDBAG_SAND_GREEN_ITEM.get());
                         output.accept(BlockRegistry.SANDBAG_DIRT_SAND_ITEM.get());
                         output.accept(BlockRegistry.SANDBAG_SAND_SAND_ITEM.get());
+                        output.accept(BlockRegistry.BUNKER_CONCRETE.get());
+                        output.accept(BlockRegistry.BUNKER_CONCRETE_DENSE.get());
+                        output.accept(BlockRegistry.BUNKER_REINFORCED_CONCRETE.get());
+                        output.accept(BlockRegistry.BUNKER_REINFORCED_CONCRETE_DENSE.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_UP.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_DOWN.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_UP_DENSE.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_DOWN_DENSE.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_REINFORCED_CONCRETE_UP.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_REINFORCED_CONCRETE_DOWN.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_REINFORCED_CONCRETE_UP_DENSE.get());
+                        output.accept(BlockRegistry.BUNKER_SIGNAL_REINFORCED_CONCRETE_DOWN_DENSE.get());
                         output.accept(ModItems.HANDHELD_SIREN.get());
                         output.accept(PartialWaterBucketItem.stackForUnits(5));
                         output.accept(FiniteWaterBlocks.DRAIN_ITEM.get());

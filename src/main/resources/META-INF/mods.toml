@@ -4,8 +4,8 @@ license="GPL-3.0-only"
 
 [[mods]]
 modId="fly_drone"
-version="1.1.47"
-displayName="Fly Drone"
+version="1.1.48"
+displayName="Sarcophag"
 authors="Zzynes"
 description='''
 '''
