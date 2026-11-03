@@ -41,6 +41,7 @@ public final class FiniteWaterManager {
     private static final int EQUALIZE_MAX_CELLS = 512;
     private static final int EQUALIZE_MAX_MOVES = 16;
     private static final int EQUALIZE_TASKS_PER_TICK = 2;
+    private static final int PRESSURE_SEARCHES_PER_TICK = 2;
     private static final long EQUALIZE_COOLDOWN_TICKS = 10L;
     private static final long EQUALIZE_CHANGED_COOLDOWN_TICKS = 4L;
     private static final int TICK_DELAY = 2;
@@ -712,9 +713,7 @@ public final class FiniteWaterManager {
         long cooldownUntil = session.memory.equalizationCooldown.get(pos.asLong());
         if (cooldownUntil > now) {
             long remaining = cooldownUntil - now;
-            if (remaining <= EQUALIZE_CHANGED_COOLDOWN_TICKS) {
-                schedule(level, pos, (int) Math.max(1L, remaining));
-            }
+            schedule(level, pos, (int) Math.max(1L, remaining));
             return false;
         }
         if (session.memory.equalizationTaskTick != now) {
@@ -1216,9 +1215,10 @@ public final class FiniteWaterManager {
             return false;
         }
         int ownHead = columnHead(level, pos, session);
+        int ownSurface = pos.getY() * MAX_UNITS + ownHead;
         Direction bestDirection = null;
         BlockPos bestPos = null;
-        int bestHead = ownHead + MILLIBUCKETS_PER_UNIT;
+        int bestSurface = ownSurface + MILLIBUCKETS_PER_UNIT;
         for (Direction direction : HORIZONTAL_DIRECTIONS) {
             BlockPos neighbor = pos.relative(direction);
             if (!level.isLoaded(neighbor)
@@ -1227,28 +1227,36 @@ public final class FiniteWaterManager {
                     || session.memory.flowOutAt.get(neighbor.asLong()) == level.getGameTime()) {
                 continue;
             }
-            int neighborHead = columnHead(level, neighbor, session);
-            if (neighborHead > bestHead) {
+            int neighborSurface = neighbor.getY() * MAX_UNITS + columnHead(level, neighbor, session);
+            if (neighborSurface > bestSurface) {
                 bestDirection = direction;
                 bestPos = neighbor;
-                bestHead = neighborHead;
+                bestSurface = neighborSurface;
             }
         }
-        if (bestDirection == null || bestPos == null) {
+        if (bestPos == null) {
+            bestPos = findSaturatedPressureDonor(level, pos, ownSurface, session);
+            if (bestPos != null) {
+                bestSurface = bestPos.getY() * MAX_UNITS + columnHead(level, bestPos, session);
+            }
+        }
+        if (bestPos == null) {
             return false;
         }
         int neighborUnits = volumeAt(level, bestPos, session, false);
         if (neighborUnits <= 0) {
             return false;
         }
-        int move = (bestHead - ownHead) / 2;
-        move -= move % MILLIBUCKETS_PER_UNIT;
-        move = Math.min(move, Math.min(neighborUnits / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT, (MAX_UNITS - aboveUnits) / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT));
+        int move = Math.min(MILLIBUCKETS_PER_UNIT, (bestSurface - ownSurface + 1) / 2);
+        int donorLimit = neighborUnits >= MAX_UNITS
+                ? neighborUnits
+                : neighborUnits / MILLIBUCKETS_PER_UNIT * MILLIBUCKETS_PER_UNIT;
+        move = Math.min(move, Math.min(donorLimit, MAX_UNITS - aboveUnits));
         if (move <= 0) {
             return false;
         }
         setUnits(level, above, aboveUnits + move, Direction.UP, session);
-        setUnits(level, bestPos, neighborUnits - move, bestDirection.getOpposite(), session);
+        setUnits(level, bestPos, neighborUnits - move, bestDirection == null ? null : bestDirection.getOpposite(), session);
         long now = level.getGameTime();
         session.memory.flowInAt.put(above.asLong(), now);
         session.memory.flowOutAt.put(pos.asLong(), now);
@@ -1261,6 +1269,54 @@ public final class FiniteWaterManager {
         schedule(level, bestPos);
         schedule(level, bestPos.above());
         return true;
+    }
+
+    private static BlockPos findSaturatedPressureDonor(Level level, BlockPos start, int ownSurface, Session session) {
+        long now = level.getGameTime();
+        if (session.memory.pressureSearchTick != now) {
+            session.memory.pressureSearchTick = now;
+            session.memory.pressureSearchesThisTick = 0;
+        }
+        if (session.memory.pressureSearchesThisTick >= PRESSURE_SEARCHES_PER_TICK) {
+            schedule(level, start, 2);
+            return null;
+        }
+        session.memory.pressureSearchesThisTick++;
+        LongOpenHashSet visited = new LongOpenHashSet();
+        LongOpenHashSet evaluatedColumns = new LongOpenHashSet();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        visited.add(start.asLong());
+        evaluatedColumns.add(BlockPos.asLong(start.getX(), 0, start.getZ()));
+        queue.add(start);
+        BlockPos best = null;
+        int bestSurface = ownSurface + 1;
+        while (!queue.isEmpty() && visited.size() <= EQUALIZE_MAX_CELLS) {
+            BlockPos current = queue.removeFirst();
+            long columnKey = BlockPos.asLong(current.getX(), 0, current.getZ());
+            if (!current.equals(start)
+                    && !evaluatedColumns.contains(columnKey)
+                    && !changedByFlowThisTick(session, current.asLong(), now)) {
+                evaluatedColumns.add(columnKey);
+                int surface = current.getY() * MAX_UNITS + columnHead(level, current, session);
+                if (surface > bestSurface) {
+                    bestSurface = surface;
+                    best = current.immutable();
+                }
+            }
+            for (Direction direction : Direction.values()) {
+                BlockPos neighbor = current.relative(direction);
+                long neighborKey = neighbor.asLong();
+                if (visited.contains(neighborKey)
+                        || !level.isLoaded(neighbor)
+                        || !canEnter(level, current, direction, neighbor)
+                        || volumeAt(level, neighbor, session, false) < MAX_UNITS) {
+                    continue;
+                }
+                visited.add(neighborKey);
+                queue.add(neighbor);
+            }
+        }
+        return best;
     }
 
     private static boolean transfer(Level level, BlockPos from, BlockPos to, Direction direction, int units, Session session) {
