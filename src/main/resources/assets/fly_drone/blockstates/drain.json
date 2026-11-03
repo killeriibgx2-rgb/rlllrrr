@@ -1,0 +1,12 @@
+{
+  "multipart": [
+    {
+      "when": { "half": "bottom" },
+      "apply": { "model": "fly_drone:block/drain" }
+    },
+    {
+      "when": { "half": "top" },
+      "apply": { "model": "fly_drone:block/drain", "x": 180 }
+    }
+  ]
+}

@@ -1294,7 +1294,12 @@ public final class FiniteWaterManager {
             boolean changed = session.memory.finiteCells.remove(key);
             changed |= session.memory.volumes.remove(key) != 0;
             session.memory.largeCells.remove(key);
-            if (isOpenWater(level, pos)) {
+            BlockState dryState = level.getBlockState(pos);
+            if (dryState.getBlock() instanceof DrainBlock) {
+                if (dryState.getValue(DrainBlock.LEVEL) != 0) {
+                    level.setBlock(pos, dryState.setValue(DrainBlock.LEVEL, 0), 3);
+                }
+            } else if (isOpenWater(level, pos)) {
                 level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
             }
             if (changed) {
@@ -1317,7 +1322,15 @@ public final class FiniteWaterManager {
         FluidState newFluidState = fluidStateForUnits(clamped);
         BlockState oldState = level.getBlockState(pos);
         BlockState newState = newFluidState.createLegacyBlock();
-        if (!oldState.equals(newState)) {
+        if (oldState.getBlock() instanceof DrainBlock) {
+            int displayAmount = clamped >= MAX_UNITS
+                    ? 8
+                    : displayAmountForUnits(Math.max(1, Math.min(BUCKET_UNITS, clamped / MILLIBUCKETS_PER_UNIT)));
+            BlockState drainState = oldState.setValue(DrainBlock.LEVEL, displayAmount);
+            if (!oldState.equals(drainState)) {
+                level.setBlock(pos, drainState, 3);
+            }
+        } else if (!oldState.equals(newState)) {
             if (entryDirection != null && !oldState.is(Blocks.WATER) && !oldState.isAir()) {
                 ((FlowingFluidAccess) (Object) Fluids.FLOWING_WATER).flyDrone$spreadTo(level, pos, oldState, entryDirection, newFluidState);
             } else {
@@ -1361,6 +1374,25 @@ public final class FiniteWaterManager {
 
     private static int volumeAt(Level level, BlockPos pos, Session session, boolean remember) {
         BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof DrainBlock) {
+            long drainKey = pos.asLong();
+            if (state.getValue(DrainBlock.LEVEL) <= 0) {
+                if (remember && session.memory.volumes.remove(drainKey) != 0) {
+                    session.markDirty();
+                }
+                return 0;
+            }
+            int storedDrain = Math.min(MAX_UNITS, session.memory.volumes.get(drainKey));
+            if (storedDrain > 0) {
+                return storedDrain;
+            }
+            int inferredDrain = inferredUnits(state.getFluidState());
+            if (remember) {
+                session.memory.volumes.put(drainKey, inferredDrain);
+                session.markDirty();
+            }
+            return inferredDrain;
+        }
         if (!state.is(Blocks.WATER)) {
             if (remember && session.memory.volumes.remove(pos.asLong()) != 0) {
                 session.markDirty();
@@ -1386,6 +1418,9 @@ public final class FiniteWaterManager {
         }
         BlockState toState = level.getBlockState(to);
         if (toState.is(Blocks.WATER)) {
+            return true;
+        }
+        if (toState.getBlock() instanceof DrainBlock) {
             return true;
         }
         FluidState toFluidState = toState.getFluidState();
@@ -1447,13 +1482,21 @@ public final class FiniteWaterManager {
             return false;
         }
         BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof DrainBlock) {
+            return state.getValue(DrainBlock.LEVEL) == 0;
+        }
         return state.getFluidState().isEmpty()
                 && !(state.getBlock() instanceof LiquidBlockContainer)
                 && (state.isAir() || state.canBeReplaced());
     }
 
     private static boolean isOpenWater(BlockGetter level, BlockPos pos) {
-        return level.getBlockState(pos).is(Blocks.WATER);
+        BlockState state = level.getBlockState(pos);
+        return state.is(Blocks.WATER) || isWetDrain(state);
+    }
+
+    private static boolean isWetDrain(BlockState state) {
+        return state.getBlock() instanceof DrainBlock && state.getValue(DrainBlock.LEVEL) > 0;
     }
 
     private static Session session(Level level) {
