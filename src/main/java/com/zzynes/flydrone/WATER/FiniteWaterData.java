@@ -75,6 +75,8 @@ public class FiniteWaterData extends SavedData {
         final Long2LongOpenHashMap equalizationCooldown = new Long2LongOpenHashMap();
         long equalizationTaskTick = Long.MIN_VALUE;
         int equalizationTasksThisTick;
+        long pressureSearchTick = Long.MIN_VALUE;
+        int pressureSearchesThisTick;
 
         Memory() {
             this.largeCells.defaultReturnValue(Long.MIN_VALUE);
