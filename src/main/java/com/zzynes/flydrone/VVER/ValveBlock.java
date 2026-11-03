@@ -2,7 +2,6 @@ package com.zzynes.flydrone.VVER;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -82,10 +81,10 @@ public class ValveBlock extends PipeBlock implements EntityBlock {
             level.playSound(
                     null,
                     pos,
-                    open ? SoundEvents.IRON_TRAPDOOR_OPEN : SoundEvents.IRON_TRAPDOOR_CLOSE,
+                    VverRegistry.VALVE_TURN_SOUND.get(),
                     SoundSource.BLOCKS,
-                    0.55F,
-                    open ? 0.85F : 0.75F
+                    0.8F,
+                    open ? 1.0F : 0.92F
             );
             level.gameEvent(player, open ? GameEvent.BLOCK_OPEN : GameEvent.BLOCK_CLOSE, pos);
             level.updateNeighborsAt(pos, this);
