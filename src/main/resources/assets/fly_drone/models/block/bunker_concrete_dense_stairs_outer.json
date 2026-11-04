@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/outer_stairs",
+  "textures": {
+    "bottom": "fly_drone:block/beton_dense",
+    "top": "fly_drone:block/beton_dense",
+    "side": "fly_drone:block/beton_dense",
+    "particle": "fly_drone:block/beton_dense"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "fly_drone:bunker_reinforced_concrete_dense"
+  },
+  "result": "fly_drone:bunker_reinforced_concrete_dense_stairs",
+  "count": 1
+}

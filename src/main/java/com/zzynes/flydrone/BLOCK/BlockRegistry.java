@@ -5,9 +5,13 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
+
+import java.util.function.Supplier;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -89,15 +93,56 @@ public class BlockRegistry {
     public static final RegistryObject<Block> BUNKER_SIGNAL_REINFORCED_CONCRETE_DOWN_DENSE =
             registerConcrete("bunker_signal_reinforced_concrete_down_dense", MapColor.COLOR_GRAY, 10.0f, 32.0f);
 
+    public static final RegistryObject<Block> BUNKER_CONCRETE_SLAB =
+            registerConcreteSlab("bunker_concrete_slab", MapColor.STONE, 5.0f, 12.0f);
+
+    public static final RegistryObject<Block> BUNKER_CONCRETE_STAIRS =
+            registerConcreteStairs("bunker_concrete_stairs", BUNKER_CONCRETE, MapColor.STONE, 5.0f, 12.0f);
+
+    public static final RegistryObject<Block> BUNKER_CONCRETE_DENSE_SLAB =
+            registerConcreteSlab("bunker_concrete_dense_slab", MapColor.COLOR_GRAY, 7.0f, 18.0f);
+
+    public static final RegistryObject<Block> BUNKER_CONCRETE_DENSE_STAIRS =
+            registerConcreteStairs("bunker_concrete_dense_stairs", BUNKER_CONCRETE_DENSE, MapColor.COLOR_GRAY, 7.0f, 18.0f);
+
+    public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE_SLAB =
+            registerConcreteSlab("bunker_reinforced_concrete_slab", MapColor.STONE, 8.0f, 24.0f);
+
+    public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE_STAIRS =
+            registerConcreteStairs("bunker_reinforced_concrete_stairs", BUNKER_REINFORCED_CONCRETE, MapColor.STONE, 8.0f, 24.0f);
+
+    public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE_DENSE_SLAB =
+            registerConcreteSlab("bunker_reinforced_concrete_dense_slab", MapColor.COLOR_GRAY, 10.0f, 32.0f);
+
+    public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE_DENSE_STAIRS =
+            registerConcreteStairs("bunker_reinforced_concrete_dense_stairs", BUNKER_REINFORCED_CONCRETE_DENSE, MapColor.COLOR_GRAY, 10.0f, 32.0f);
+
     private static RegistryObject<Block> registerConcrete(String name, MapColor mapColor, float destroyTime, float explosionResistance) {
-        RegistryObject<Block> block = BLOCKS.register(name,
-                () -> new Block(BlockBehaviour.Properties.copy(Blocks.STONE)
-                        .mapColor(mapColor)
-                        .sound(SoundType.STONE)
-                        .strength(destroyTime, explosionResistance)
-                        .requiresCorrectToolForDrops()));
+        return registerConcreteBlock(name, () -> new Block(concreteProperties(mapColor, destroyTime, explosionResistance)));
+    }
+
+    private static RegistryObject<Block> registerConcreteSlab(String name, MapColor mapColor, float destroyTime, float explosionResistance) {
+        return registerConcreteBlock(name, () -> new SlabBlock(concreteProperties(mapColor, destroyTime, explosionResistance)));
+    }
+
+    private static RegistryObject<Block> registerConcreteStairs(String name, RegistryObject<Block> base, MapColor mapColor, float destroyTime, float explosionResistance) {
+        return registerConcreteBlock(name, () -> new StairBlock(
+                () -> base.get().defaultBlockState(),
+                concreteProperties(mapColor, destroyTime, explosionResistance)));
+    }
+
+    private static RegistryObject<Block> registerConcreteBlock(String name, Supplier<Block> supplier) {
+        RegistryObject<Block> block = BLOCKS.register(name, supplier);
         ITEMS.register(name, () -> new BlockItem(block.get(), new Item.Properties()));
         return block;
+    }
+
+    private static BlockBehaviour.Properties concreteProperties(MapColor mapColor, float destroyTime, float explosionResistance) {
+        return BlockBehaviour.Properties.copy(Blocks.STONE)
+                .mapColor(mapColor)
+                .sound(SoundType.STONE)
+                .strength(destroyTime, explosionResistance)
+                .requiresCorrectToolForDrops();
     }
 
     public static void register(IEventBus eventBus) {
