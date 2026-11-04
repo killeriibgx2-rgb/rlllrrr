@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "#": {
+      "item": "fly_drone:bunker_reinforced_concrete_dense"
+    }
+  },
+  "pattern": [
+    "#  ",
+    "## ",
+    "###"
+  ],
+  "result": {
+    "item": "fly_drone:bunker_reinforced_concrete_dense_stairs",
+    "count": 4
+  }
+}
