@@ -117,7 +117,7 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
             return InteractionResult.PASS;
         }
         Direction facing = mainState.getValue(FACING);
-        if (BatteryCabinetSlots.isHandleHit(mainPos, facing, hit.getLocation())) {
+        if (BatteryCabinetSlots.isHandleHit(mainPos, facing, hit.getLocation(), cabinet.isOpen())) {
             if (!level.isClientSide) {
                 boolean newOpen = !cabinet.isOpen();
                 cabinet.setOpen(newOpen);

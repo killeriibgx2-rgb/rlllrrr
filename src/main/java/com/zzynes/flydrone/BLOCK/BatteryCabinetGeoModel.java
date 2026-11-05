@@ -40,7 +40,7 @@ public class BatteryCabinetGeoModel<T extends GeoAnimatable> extends GeoModel<T>
             getBone(boneName).ifPresent(bone -> bone.setHidden(!installed));
         }
         float progress = cabinet == null ? 0.0f : cabinet.getDoorProgress();
-        getBone("door1").ifPresent(bone -> bone.setRotY(DOOR_OPEN_RADIANS * progress));
-        getBone("door2").ifPresent(bone -> bone.setRotY(-DOOR_OPEN_RADIANS * progress));
+        getBone("door1").ifPresent(bone -> bone.setRotY(-DOOR_OPEN_RADIANS * progress));
+        getBone("door2").ifPresent(bone -> bone.setRotY(DOOR_OPEN_RADIANS * progress));
     }
 }

@@ -117,13 +117,19 @@ public final class BatteryCabinetSlots {
         );
     }
 
-    public static boolean isHandleHit(BlockPos mainPos, Direction facing, Vec3 point) {
+    public static boolean isHandleHit(BlockPos mainPos, Direction facing, Vec3 point, boolean open) {
         double[] local = toLocal(mainPos, facing, point);
         double u = local[0];
         double v = local[1];
         double w = local[2];
-        if (v < HANDLE_V0 || v > HANDLE_V1 || w < HANDLE_W0 || w > HANDLE_W1) {
+        if (v < (open ? 0.8 : HANDLE_V0) || v > (open ? 2.0 : HANDLE_V1)) {
             return false;
+        }
+        if (w < (open ? 0.6 : HANDLE_W0) || w > (open ? 1.5 : HANDLE_W1)) {
+            return false;
+        }
+        if (open) {
+            return u >= 0.3 && u <= 1.7;
         }
         return (u >= 0.72 && u <= 1.03) || (u >= 0.97 && u <= 1.28);
     }
