@@ -147,20 +147,23 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
         }
         if (held.isEmpty()) {
             int slot = BatteryCabinetSlots.pickSlot(mainPos, facing, cabinet.getBatteriesMask(), true, eye, end);
-            if (slot < 0) {
-                return InteractionResult.PASS;
-            }
-            if (!level.isClientSide) {
-                cabinet.setInstalled(slot, false);
-                ItemStack battery = new ItemStack(ModItems.BATTERY.get());
-                if (!player.addItem(battery)) {
-                    player.drop(battery, false);
+            if (slot >= 0) {
+                if (!level.isClientSide) {
+                    cabinet.setInstalled(slot, false);
+                    ItemStack battery = new ItemStack(ModItems.BATTERY.get());
+                    if (!player.addItem(battery)) {
+                        player.drop(battery, false);
+                    }
+                    level.playSound(null, mainPos, SoundEvents.METAL_HIT, SoundSource.BLOCKS, 0.6f, 0.9f);
                 }
-                level.playSound(null, mainPos, SoundEvents.METAL_HIT, SoundSource.BLOCKS, 0.6f, 0.9f);
+                return InteractionResult.sidedSuccess(level.isClientSide);
             }
-            return InteractionResult.sidedSuccess(level.isClientSide);
         }
-        return InteractionResult.PASS;
+        if (!level.isClientSide) {
+            cabinet.setOpen(false);
+            level.playSound(null, mainPos, SoundEvents.IRON_DOOR_CLOSE, SoundSource.BLOCKS, 0.8f, 1.0f);
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
     @Override
@@ -236,7 +239,12 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return Shapes.block();
+        Direction facing = state.getValue(FACING);
+        double minX = facing == Direction.WEST ? -0.125 : 0.0;
+        double maxX = facing == Direction.EAST ? 1.125 : 1.0;
+        double minZ = facing == Direction.NORTH ? -0.125 : 0.0;
+        double maxZ = facing == Direction.SOUTH ? 1.125 : 1.0;
+        return Shapes.box(minX, 0.0, minZ, maxX, 1.0, maxZ);
     }
 
     @Override
