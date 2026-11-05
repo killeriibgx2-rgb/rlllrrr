@@ -24,7 +24,7 @@ public class BatteryCabinetBlockEntity extends BlockEntity implements GeoBlockEn
     private boolean open;
     private long batteriesMask;
     private float doorProgress;
-    private boolean doorProgressInitialized;
+    private boolean doorProgressInitialized = true;
     private boolean partsChecked;
 
     public BatteryCabinetBlockEntity(BlockPos pos, BlockState state) {
@@ -32,9 +32,8 @@ public class BatteryCabinetBlockEntity extends BlockEntity implements GeoBlockEn
     }
 
     public static void tick(Level level, BlockPos pos, BlockState state, BatteryCabinetBlockEntity blockEntity) {
-        if (level.isClientSide) {
-            blockEntity.updateDoorProgress();
-        } else if (!blockEntity.partsChecked) {
+        blockEntity.updateDoorProgress();
+        if (!level.isClientSide && !blockEntity.partsChecked) {
             blockEntity.partsChecked = BatteryCabinetBlock.placeParts(level, pos, state, false);
         }
     }

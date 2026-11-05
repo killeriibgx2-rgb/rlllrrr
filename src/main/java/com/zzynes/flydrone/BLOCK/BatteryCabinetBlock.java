@@ -117,7 +117,9 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
             return InteractionResult.PASS;
         }
         Direction facing = mainState.getValue(FACING);
-        if (!cabinet.isOpen() || BatteryCabinetSlots.isHandleHit(mainPos, facing, hit.getLocation(), true)) {
+        Vec3 eye = player.getEyePosition();
+        Vec3 end = eye.add(player.getViewVector(1.0f).scale(REACH));
+        if (BatteryCabinetSlots.isHandleHit(mainPos, facing, cabinet.getDoorProgress(), eye, end)) {
             if (!level.isClientSide) {
                 boolean newOpen = !cabinet.isOpen();
                 cabinet.setOpen(newOpen);
@@ -129,8 +131,6 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
             return InteractionResult.PASS;
         }
         ItemStack held = player.getItemInHand(hand);
-        Vec3 eye = player.getEyePosition();
-        Vec3 end = eye.add(player.getViewVector(1.0f).scale(REACH));
         if (held.is(ModItems.BATTERY.get())) {
             int slot = BatteryCabinetSlots.pickSlot(mainPos, facing, cabinet.getBatteriesMask(), false, eye, end);
             if (slot < 0) {
@@ -159,11 +159,7 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
                 return InteractionResult.sidedSuccess(level.isClientSide);
             }
         }
-        if (!level.isClientSide) {
-            cabinet.setOpen(false);
-            level.playSound(null, mainPos, SoundEvents.IRON_DOOR_CLOSE, SoundSource.BLOCKS, 0.8f, 1.0f);
-        }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.PASS;
     }
 
     @Override
