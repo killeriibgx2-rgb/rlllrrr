@@ -5,6 +5,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.StairBlock;
@@ -23,6 +24,9 @@ public class BlockRegistry {
 
     public static final DeferredRegister<Block> BLOCKS =
             DeferredRegister.create(ForgeRegistries.BLOCKS, FlyDroneMod.MOD_ID);
+
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
+            DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, FlyDroneMod.MOD_ID);
 
     public static final RegistryObject<Item> CLOTH_WHITE = ITEMS.register("cloth_white",
             () -> new Item(new Item.Properties()));
@@ -117,6 +121,16 @@ public class BlockRegistry {
     public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE_DENSE_STAIRS =
             registerConcreteStairs("bunker_reinforced_concrete_dense_stairs", BUNKER_REINFORCED_CONCRETE_DENSE, MapColor.COLOR_GRAY, 10.0f, 32.0f);
 
+    public static final RegistryObject<Block> BATTERY_CABINET = BLOCKS.register("battery_cabinet",
+            BatteryCabinetBlock::new);
+
+    public static final RegistryObject<Item> BATTERY_CABINET_ITEM = ITEMS.register("battery_cabinet",
+            () -> new BatteryCabinetBlockItem(BATTERY_CABINET.get()));
+
+    @SuppressWarnings("ConstantConditions")
+    public static final RegistryObject<BlockEntityType<BatteryCabinetBlockEntity>> BATTERY_CABINET_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("battery_cabinet", () -> BlockEntityType.Builder.of(BatteryCabinetBlockEntity::new, BATTERY_CABINET.get()).build(null));
+
     private static RegistryObject<Block> registerConcrete(String name, MapColor mapColor, float destroyTime, float explosionResistance) {
         return registerConcreteBlock(name, () -> new Block(concreteProperties(mapColor, destroyTime, explosionResistance)));
     }
@@ -148,5 +162,6 @@ public class BlockRegistry {
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
         BLOCKS.register(eventBus);
+        BLOCK_ENTITIES.register(eventBus);
     }
 }

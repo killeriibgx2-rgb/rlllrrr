@@ -32,6 +32,7 @@
     "fly_drone:bunker_concrete_stairs",
     "fly_drone:bunker_concrete_dense_stairs",
     "fly_drone:bunker_reinforced_concrete_stairs",
-    "fly_drone:bunker_reinforced_concrete_dense_stairs"
+    "fly_drone:bunker_reinforced_concrete_dense_stairs",
+    "fly_drone:battery_cabinet"
   ]
 }
