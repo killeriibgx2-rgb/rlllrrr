@@ -22,6 +22,8 @@ public class ModItems {
             () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> BATTERY = ITEMS.register("battery",
             () -> new Item(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> CABINET_BATTERY = ITEMS.register("cabinet_battery",
+            () -> new Item(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> RPG_SHELL = ITEMS.register("rpg_snar",
             () -> new Item(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> CI4_CHARGE = ITEMS.register("ci4",

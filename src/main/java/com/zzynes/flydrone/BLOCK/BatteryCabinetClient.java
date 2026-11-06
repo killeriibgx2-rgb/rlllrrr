@@ -41,7 +41,7 @@ public class BatteryCabinetClient {
             if (player == null || minecraft.level == null) {
                 return;
             }
-            if (!player.getMainHandItem().is(ModItems.BATTERY.get()) && !player.getOffhandItem().is(ModItems.BATTERY.get())) {
+            if (!player.getMainHandItem().is(ModItems.CABINET_BATTERY.get()) && !player.getOffhandItem().is(ModItems.CABINET_BATTERY.get())) {
                 return;
             }
             if (!(minecraft.hitResult instanceof BlockHitResult blockHit) || blockHit.getType() != HitResult.Type.BLOCK) {
@@ -68,7 +68,7 @@ public class BatteryCabinetClient {
             if (slot < 0) {
                 return;
             }
-            AABB box = BatteryCabinetSlots.slotWorldBox(mainPos, facing, slot).inflate(0.01);
+            AABB box = BatteryCabinetSlots.slotWorldBox(mainPos, facing, slot).inflate(0.002);
             Vec3 camera = event.getCamera().getPosition();
             PoseStack poseStack = event.getPoseStack();
             poseStack.pushPose();

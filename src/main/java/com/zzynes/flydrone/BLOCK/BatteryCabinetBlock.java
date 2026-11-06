@@ -131,7 +131,7 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
             return InteractionResult.PASS;
         }
         ItemStack held = player.getItemInHand(hand);
-        if (held.is(ModItems.BATTERY.get())) {
+        if (held.is(ModItems.CABINET_BATTERY.get())) {
             int slot = BatteryCabinetSlots.pickSlot(mainPos, facing, cabinet.getBatteriesMask(), false, eye, end);
             if (slot < 0) {
                 return InteractionResult.PASS;
@@ -150,7 +150,7 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
             if (slot >= 0) {
                 if (!level.isClientSide) {
                     cabinet.setInstalled(slot, false);
-                    ItemStack battery = new ItemStack(ModItems.BATTERY.get());
+                    ItemStack battery = new ItemStack(ModItems.CABINET_BATTERY.get());
                     if (!player.addItem(battery)) {
                         player.drop(battery, false);
                     }
@@ -188,7 +188,7 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
                 if (level.getBlockEntity(pos) instanceof BatteryCabinetBlockEntity cabinet) {
                     int count = cabinet.getInstalledCount();
                     for (int i = 0; i < count; i++) {
-                        Block.popResource(level, pos, new ItemStack(ModItems.BATTERY.get()));
+                        Block.popResource(level, pos, new ItemStack(ModItems.CABINET_BATTERY.get()));
                     }
                 }
                 for (int part = 1; part <= 5; part++) {

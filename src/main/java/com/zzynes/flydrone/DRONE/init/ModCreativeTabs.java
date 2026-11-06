@@ -29,6 +29,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.LITHIUM_INGOT.get());
                         output.accept(ModItems.COPPER_WIRE.get());
                         output.accept(ModItems.BATTERY.get());
+                        output.accept(ModItems.CABINET_BATTERY.get());
                         output.accept(ModItems.RPG_SHELL.get());
                         output.accept(ModItems.CI4_CHARGE.get());
                         output.accept(ModItems.REMOTE_CONNECTED.get());
