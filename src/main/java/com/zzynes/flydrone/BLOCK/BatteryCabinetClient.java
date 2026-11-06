@@ -41,9 +41,6 @@ public class BatteryCabinetClient {
             if (player == null || minecraft.level == null) {
                 return;
             }
-            if (!player.getMainHandItem().is(ModItems.CABINET_BATTERY.get()) && !player.getOffhandItem().is(ModItems.CABINET_BATTERY.get())) {
-                return;
-            }
             if (!(minecraft.hitResult instanceof BlockHitResult blockHit) || blockHit.getType() != HitResult.Type.BLOCK) {
                 return;
             }
@@ -57,18 +54,47 @@ public class BatteryCabinetClient {
             if (!mainState.is(state.getBlock()) || mainState.getValue(BatteryCabinetBlock.PART) != BatteryCabinetBlock.PART_MAIN) {
                 return;
             }
-            if (!(minecraft.level.getBlockEntity(mainPos) instanceof BatteryCabinetBlockEntity cabinet) || !cabinet.isOpen()) {
+            if (!(minecraft.level.getBlockEntity(mainPos) instanceof BatteryCabinetBlockEntity cabinet)) {
                 return;
             }
             Direction facing = mainState.getValue(BatteryCabinetBlock.FACING);
             float partialTick = event.getPartialTick();
             Vec3 eye = player.getEyePosition(partialTick);
             Vec3 end = eye.add(player.getViewVector(partialTick).scale(5.0));
-            int slot = BatteryCabinetSlots.pickSlot(mainPos, facing, cabinet.getBatteriesMask(), false, eye, end);
-            if (slot < 0) {
+            int door = BatteryCabinetSlots.hitDoorPanel(mainPos, facing, cabinet.getDoorProgress(), eye, end);
+            if (door != 0) {
+                drawDoorOutline(minecraft, event, BatteryCabinetSlots.doorPanelWorldCorners(mainPos, facing, cabinet.getDoorProgress(), door));
                 return;
             }
-            AABB box = BatteryCabinetSlots.slotWorldBox(mainPos, facing, slot).inflate(0.002);
+            if (!cabinet.isOpen()
+                    || (!player.getMainHandItem().is(ModItems.CABINET_BATTERY.get())
+                    && !player.getOffhandItem().is(ModItems.CABINET_BATTERY.get()))) {
+                return;
+            }
+            int slot = BatteryCabinetSlots.pickSlot(mainPos, facing, cabinet.getBatteriesMask(), false, eye, end);
+            if (slot >= 0) {
+                drawOutline(minecraft, event, BatteryCabinetSlots.slotWorldBox(mainPos, facing, slot).inflate(0.002));
+            }
+        }
+
+        private static void drawDoorOutline(Minecraft minecraft, RenderLevelStageEvent event, Vec3[] corners) {
+            Vec3 camera = event.getCamera().getPosition();
+            VertexConsumer buffer = minecraft.renderBuffers().bufferSource().getBuffer(RenderType.lines());
+            int[][] edges = {
+                    {0, 1}, {2, 3}, {4, 5}, {6, 7},
+                    {0, 2}, {1, 3}, {4, 6}, {5, 7},
+                    {0, 4}, {1, 5}, {2, 6}, {3, 7}
+            };
+            for (int[] edge : edges) {
+                Vec3 a = corners[edge[0]].subtract(camera);
+                Vec3 b = corners[edge[1]].subtract(camera);
+                buffer.vertex(a.x, a.y, a.z).color(0.25f, 1.0f, 0.35f, 1.0f).normal(0.0f, 1.0f, 0.0f).endVertex();
+                buffer.vertex(b.x, b.y, b.z).color(0.25f, 1.0f, 0.35f, 1.0f).normal(0.0f, 1.0f, 0.0f).endVertex();
+            }
+            minecraft.renderBuffers().bufferSource().endBatch(RenderType.lines());
+        }
+
+        private static void drawOutline(Minecraft minecraft, RenderLevelStageEvent event, AABB box) {
             Vec3 camera = event.getCamera().getPosition();
             PoseStack poseStack = event.getPoseStack();
             poseStack.pushPose();

@@ -131,12 +131,64 @@ public final class BatteryCabinetSlots {
         );
     }
 
-    public static boolean isHandleHit(BlockPos mainPos, Direction facing, float doorProgress, Vec3 eye, Vec3 end) {
-        return rayHitsHandle(mainPos, facing, 1, doorProgress, eye, end)
-                || rayHitsHandle(mainPos, facing, 2, doorProgress, eye, end);
+    public static int hitDoorPanel(BlockPos mainPos, Direction facing, float doorProgress, Vec3 eye, Vec3 end) {
+        for (int door = 1; door <= 2; door++) {
+            if (rayHitsDoorPanel(mainPos, facing, door, doorProgress, eye, end)) {
+                return door;
+            }
+        }
+        return 0;
     }
 
-    private static boolean rayHitsHandle(BlockPos mainPos, Direction facing, int door, float progress, Vec3 eye, Vec3 end) {
+    public static AABB doorPanelWorldBounds(BlockPos mainPos, Direction facing, float doorProgress, int door) {
+        Vec3[] corners = doorPanelWorldCorners(mainPos, facing, doorProgress, door);
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+        for (Vec3 point : corners) {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            minZ = Math.min(minZ, point.z);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
+            maxZ = Math.max(maxZ, point.z);
+        }
+        return new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(0.002);
+    }
+
+    public static Vec3[] doorPanelWorldCorners(BlockPos mainPos, Direction facing, float doorProgress, int door) {
+        double minU = door == 1 ? 0.0 : 1.0;
+        double maxU = door == 1 ? 1.0 : 2.0;
+        double minV = 1.2 / 16.0;
+        double maxV = 47.2 / 16.0;
+        double minW = 7.0 / 16.0 + 0.5;
+        double maxW = 8.0 / 16.0 + 0.5;
+        double pivotX = door == 1 ? 7.5 : -23.5;
+        double pivotU = 0.5 - pivotX / 16.0;
+        double pivotW = 0.5 + 7.5 / 16.0;
+        double angle = -Math.toRadians((door == 1 ? -80.0 : 80.0) * doorProgress);
+        double cos = Math.cos(angle);
+        double sin = Math.sin(angle);
+        Vec3[] corners = new Vec3[8];
+        int index = 0;
+        for (double u : new double[]{minU, maxU}) {
+            for (double v : new double[]{minV, maxV}) {
+                for (double w : new double[]{minW, maxW}) {
+                    double du = u - pivotU;
+                    double dw = w - pivotW;
+                    double rotatedU = pivotU + cos * du + sin * dw;
+                    double rotatedW = pivotW - sin * du + cos * dw;
+                    corners[index++] = toWorld(mainPos, facing, rotatedU, v, rotatedW);
+                }
+            }
+        }
+        return corners;
+    }
+
+    private static boolean rayHitsDoorPanel(BlockPos mainPos, Direction facing, int door, float progress, Vec3 eye, Vec3 end) {
         double pivotX = door == 1 ? 7.5 : -23.5;
         double pivotU = 0.5 - pivotX / 16.0;
         double pivotW = 0.5 + 7.5 / 16.0;
@@ -145,10 +197,10 @@ public final class BatteryCabinetSlots {
         double sin = Math.sin(angle);
         Vec3 localEye = inverseDoorRotation(toLocal(mainPos, facing, eye), pivotU, pivotW, cos, sin);
         Vec3 localEnd = inverseDoorRotation(toLocal(mainPos, facing, end), pivotU, pivotW, cos, sin);
-        double minU = door == 1 ? 0.8125 : 1.0625;
-        double maxU = door == 1 ? 0.9375 : 1.1875;
-        AABB handle = new AABB(minU, 1.325, 1.0, maxU, 1.700, 1.0625).inflate(0.0125);
-        return handle.clip(localEye, localEnd).isPresent();
+        double minU = door == 1 ? 0.0 : 1.0;
+        double maxU = door == 1 ? 1.0 : 2.0;
+        AABB panel = new AABB(minU, 1.2 / 16.0, 7.0 / 16.0 + 0.5, maxU, 47.2 / 16.0, 8.0 / 16.0 + 0.5).inflate(0.002);
+        return panel.clip(localEye, localEnd).isPresent();
     }
 
     private static Vec3 inverseDoorRotation(double[] local, double pivotU, double pivotW, double cos, double sin) {
