@@ -169,7 +169,7 @@ public final class BatteryCabinetSlots {
         double pivotX = door == 1 ? 7.5 : -23.5;
         double pivotU = 0.5 - pivotX / 16.0;
         double pivotW = 0.5 + 7.5 / 16.0;
-        double angle = -Math.toRadians((door == 1 ? -80.0 : 80.0) * doorProgress);
+        double angle = Math.toRadians((door == 1 ? -80.0 : 80.0) * doorProgress);
         double cos = Math.cos(angle);
         double sin = Math.sin(angle);
         Vec3[] corners = new Vec3[8];
@@ -192,7 +192,7 @@ public final class BatteryCabinetSlots {
         double pivotX = door == 1 ? 7.5 : -23.5;
         double pivotU = 0.5 - pivotX / 16.0;
         double pivotW = 0.5 + 7.5 / 16.0;
-        double angle = -Math.toRadians((door == 1 ? -80.0 : 80.0) * progress);
+        double angle = Math.toRadians((door == 1 ? -80.0 : 80.0) * progress);
         double cos = Math.cos(angle);
         double sin = Math.sin(angle);
         Vec3 localEye = inverseDoorRotation(toLocal(mainPos, facing, eye), pivotU, pivotW, cos, sin);
