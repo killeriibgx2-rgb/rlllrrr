@@ -84,22 +84,41 @@ public final class BatteryCabinetSlots {
     }
 
     public static Vec3 toWorld(BlockPos mainPos, Direction facing, double u, double v, double w) {
-        Direction side = sideDirection(facing);
-        return new Vec3(
-                mainPos.getX() + side.getStepX() * u + facing.getStepX() * w,
-                mainPos.getY() + v,
-                mainPos.getZ() + side.getStepZ() * u + facing.getStepZ() * w
-        );
+        double x;
+        double z;
+        switch (facing) {
+            case NORTH -> {
+                x = mainPos.getX() + 1.0 - u;
+                z = mainPos.getZ() + 1.0 - w;
+            }
+            case SOUTH -> {
+                x = mainPos.getX() + u;
+                z = mainPos.getZ() + w;
+            }
+            case WEST -> {
+                x = mainPos.getX() + 1.0 - w;
+                z = mainPos.getZ() + u;
+            }
+            case EAST -> {
+                x = mainPos.getX() + w;
+                z = mainPos.getZ() + 1.0 - u;
+            }
+            default -> throw new IllegalArgumentException("Battery cabinet requires horizontal facing");
+        }
+        return new Vec3(x, mainPos.getY() + v, z);
     }
 
     public static double[] toLocal(BlockPos mainPos, Direction facing, Vec3 point) {
-        Direction side = sideDirection(facing);
         double relX = point.x - mainPos.getX();
         double relY = point.y - mainPos.getY();
         double relZ = point.z - mainPos.getZ();
-        double u = relX * side.getStepX() + relZ * side.getStepZ();
-        double w = relX * facing.getStepX() + relZ * facing.getStepZ();
-        return new double[]{u, relY, w};
+        return switch (facing) {
+            case NORTH -> new double[]{1.0 - relX, relY, 1.0 - relZ};
+            case SOUTH -> new double[]{relX, relY, relZ};
+            case WEST -> new double[]{relZ, relY, 1.0 - relX};
+            case EAST -> new double[]{1.0 - relZ, relY, relX};
+            default -> throw new IllegalArgumentException("Battery cabinet requires horizontal facing");
+        };
     }
 
     public static AABB slotWorldBox(BlockPos mainPos, Direction facing, int slot) {
@@ -150,7 +169,7 @@ public final class BatteryCabinetSlots {
             if (installed != wantInstalled) {
                 continue;
             }
-            AABB box = slotWorldBox(mainPos, facing, i).inflate(0.03);
+            AABB box = slotWorldBox(mainPos, facing, i);
             Optional<Vec3> hit = box.clip(eye, end);
             if (hit.isPresent()) {
                 double distance = hit.get().distanceToSqr(eye);

@@ -5,6 +5,7 @@
   "item.fly_drone.lithium_ingot": "Литиевый слиток",
   "item.fly_drone.copper_wire": "Медный провод",
   "item.fly_drone.battery": "Li-Ion Battery",
+  "item.fly_drone.cabinet_battery": "Автомобильный аккумулятор",
   "item.fly_drone.remote_connected": "Пульт (подключён)",
   "item.fly_drone.remote_disconnected": "Пульт (отключён)",
   "item.fly_drone.aluminum_ore": "Алюминиевая руда",
