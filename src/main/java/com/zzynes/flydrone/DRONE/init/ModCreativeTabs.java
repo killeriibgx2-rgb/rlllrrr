@@ -77,6 +77,7 @@ public class ModCreativeTabs {
                         output.accept(BlockRegistry.BUNKER_REINFORCED_CONCRETE_DENSE_SLAB.get());
                         output.accept(BlockRegistry.BUNKER_REINFORCED_CONCRETE_DENSE_STAIRS.get());
                         output.accept(BlockRegistry.BATTERY_CABINET_ITEM.get());
+                        output.accept(BlockRegistry.METAL_BEAM_SUPPORT.get());
                         output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_UP.get());
                         output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_DOWN.get());
                         output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_UP_DENSE.get());
