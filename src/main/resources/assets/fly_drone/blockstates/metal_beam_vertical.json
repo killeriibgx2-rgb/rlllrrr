@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "fly_drone:block/metal_beam_vertical"
+    }
+  }
+}
