@@ -124,6 +124,9 @@ public class BlockRegistry {
     public static final RegistryObject<Block> METAL_BEAM_SUPPORT = registerConcreteBlock(
             "metal_beam_support", MetalBeamSupportBlock::new);
 
+    public static final RegistryObject<Block> METAL_BEAM_VERTICAL = registerConcreteBlock(
+            "metal_beam_vertical", MetalBeamVerticalBlock::new);
+
     public static final RegistryObject<Block> BATTERY_CABINET = BLOCKS.register("battery_cabinet",
             BatteryCabinetBlock::new);
 
