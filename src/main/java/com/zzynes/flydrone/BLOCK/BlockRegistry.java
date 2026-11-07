@@ -121,6 +121,9 @@ public class BlockRegistry {
     public static final RegistryObject<Block> BUNKER_REINFORCED_CONCRETE_DENSE_STAIRS =
             registerConcreteStairs("bunker_reinforced_concrete_dense_stairs", BUNKER_REINFORCED_CONCRETE_DENSE, MapColor.COLOR_GRAY, 10.0f, 32.0f);
 
+    public static final RegistryObject<Block> METAL_BEAM_SUPPORT = registerConcreteBlock(
+            "metal_beam_support", MetalBeamSupportBlock::new);
+
     public static final RegistryObject<Block> BATTERY_CABINET = BLOCKS.register("battery_cabinet",
             BatteryCabinetBlock::new);
 

@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "fly_drone:block/metal_beam_support"
+    },
+    "axis=z": {
+      "model": "fly_drone:block/metal_beam_support",
+      "y": 90
+    }
+  }
+}
