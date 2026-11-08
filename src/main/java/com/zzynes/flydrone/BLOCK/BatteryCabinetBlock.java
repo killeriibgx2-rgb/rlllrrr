@@ -31,7 +31,6 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -117,10 +116,7 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
         if (!(level.getBlockEntity(mainPos) instanceof BatteryCabinetBlockEntity cabinet)) {
             return InteractionResult.PASS;
         }
-        Direction facing = mainState.getValue(FACING);
-        Vec3 eye = player.getEyePosition();
-        Vec3 end = eye.add(player.getViewVector(1.0f).scale(REACH));
-        if (BatteryCabinetSlots.hitDoorPanel(mainPos, facing, cabinet.getDoorProgress(), eye, end) != 0) {
+        if (player.isShiftKeyDown()) {
             if (!level.isClientSide) {
                 boolean newOpen = !cabinet.isOpen();
                 cabinet.setOpen(newOpen);
@@ -131,6 +127,9 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
         if (!cabinet.isOpen()) {
             return InteractionResult.PASS;
         }
+        Direction facing = mainState.getValue(FACING);
+        Vec3 eye = player.getEyePosition();
+        Vec3 end = eye.add(player.getViewVector(1.0f).scale(REACH));
         ItemStack held = player.getItemInHand(hand);
         if (held.is(ModItems.CABINET_BATTERY.get())) {
             int slot = BatteryCabinetSlots.pickSlot(mainPos, facing, cabinet.getBatteriesMask(), false, eye, end);
@@ -236,27 +235,6 @@ public class BatteryCabinetBlock extends BaseEntityBlock {
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        Direction facing = state.getValue(FACING);
-        double minX = facing == Direction.WEST ? -0.125 : 0.0;
-        double maxX = facing == Direction.EAST ? 1.125 : 1.0;
-        double minZ = facing == Direction.NORTH ? -0.125 : 0.0;
-        double maxZ = facing == Direction.SOUTH ? 1.125 : 1.0;
-        VoxelShape shape = Shapes.box(minX, 0.0, minZ, maxX, 1.0, maxZ);
-        BlockPos mainPos = mainPos(pos, state);
-        BlockState mainState = level.getBlockState(mainPos);
-        if (mainState.is(this) && level.getBlockEntity(mainPos) instanceof BatteryCabinetBlockEntity cabinet && cabinet.isOpen()) {
-            float progress = cabinet.getDoorProgress();
-            for (int door = 1; door <= 2; door++) {
-                AABB worldBox = BatteryCabinetSlots.doorPanelWorldBounds(mainPos, facing, progress, door);
-                AABB localBox = worldBox.move(-pos.getX(), -pos.getY(), -pos.getZ());
-                shape = Shapes.or(shape, Shapes.create(localBox));
-            }
-        }
-        return shape;
-    }
-
-    @Override
-    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return Shapes.block();
     }
 
