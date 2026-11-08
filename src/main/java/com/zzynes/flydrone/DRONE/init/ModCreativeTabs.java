@@ -30,6 +30,8 @@ public class ModCreativeTabs {
                         output.accept(ModItems.COPPER_WIRE.get());
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.CABINET_BATTERY.get());
+                        output.accept(BlockRegistry.METAL_BEAM_SUPPORT.get().asItem());
+                        output.accept(BlockRegistry.METAL_BEAM_VERTICAL.get().asItem());
                         output.accept(ModItems.RPG_SHELL.get());
                         output.accept(ModItems.CI4_CHARGE.get());
                         output.accept(ModItems.REMOTE_CONNECTED.get());
@@ -77,8 +79,6 @@ public class ModCreativeTabs {
                         output.accept(BlockRegistry.BUNKER_REINFORCED_CONCRETE_DENSE_SLAB.get());
                         output.accept(BlockRegistry.BUNKER_REINFORCED_CONCRETE_DENSE_STAIRS.get());
                         output.accept(BlockRegistry.BATTERY_CABINET_ITEM.get());
-                        output.accept(BlockRegistry.METAL_BEAM_SUPPORT.get());
-                        output.accept(BlockRegistry.METAL_BEAM_VERTICAL.get());
                         output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_UP.get());
                         output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_DOWN.get());
                         output.accept(BlockRegistry.BUNKER_SIGNAL_CONCRETE_UP_DENSE.get());
