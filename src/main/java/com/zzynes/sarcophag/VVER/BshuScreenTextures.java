@@ -496,6 +496,7 @@ public final class BshuScreenTextures {
         node(g, 332, 55, 162, 72, "АКТИВНАЯ ЗОНА", "ТВС " + be.getTvsPositions().size() + " | СУЗ " + be.getSuzPositions().size(), be.isLinked());
         text(g, "БАЙПАС / СЛИВ / ВЕНТИЛЯЦИЯ", 18, 152, 13, TEXT, true, false);
         String[] labels = new String[]{"BP-1", "BP-2", "BP-3", "CL-1", "CL-2", "CL-3", "CL-4", "V-1", "V-2", "V-3", "V-4", "SUMP", "ISO", "P-0"};
+        // todo: координаты и подписи когда-нибудь переедут в ресурс, пока так
         BshuToggle[] toggles = new BshuToggle[]{
                 BshuToggle.BP_1,
                 BshuToggle.BP_2,

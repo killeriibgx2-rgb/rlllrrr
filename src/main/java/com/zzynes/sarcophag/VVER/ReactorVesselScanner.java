@@ -17,8 +17,11 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 
+// обход корпуса реактора: ищем замкнутую оболочку, считаем объём и патрубки
 public final class ReactorVesselScanner {
+    // больше - это уже не корпус, а склад металла, оболочку не считаем
     private static final int MAX_SHELL_CELLS = 16384;
+    // отсечка от гигантских построек, иначе скан съедает весь тик
     private static final long MAX_SCAN_VOLUME = 524288L;
     private static final double CORE_CELL_VOLUME = 0.35;
 

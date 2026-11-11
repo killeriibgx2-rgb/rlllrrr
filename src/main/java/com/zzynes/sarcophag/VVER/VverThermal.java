@@ -3,6 +3,7 @@ package com.zzynes.sarcophag.VVER;
 import net.minecraft.util.Mth;
 
 public final class VverThermal {
+    // пороги в градусах, взяты с запасом к реальным, чтобы игрок успевал среагировать
     public static final float AMBIENT_C = 20.0f;
     public static final float SCALE_MAX_C = 2000.0f;
     public static final float TVS_NORMAL_C = 300.0f;
@@ -17,6 +18,7 @@ public final class VverThermal {
     public static final float SUZ_FAST_DAMAGE_C = 1000.0f;
     public static final float SUZ_CRITICAL_C = 1100.0f;
     public static final float SUZ_MELT_C = 1250.0f;
+    // ниже этих значений БЩУ уже орёт аварией
     public static final float CRITICAL_INTEGRITY_PERCENT = 25.0f;
     public static final float GCN_WARNING_INTEGRITY_PERCENT = 70.0f;
     public static final float GCN_CRITICAL_INTEGRITY_PERCENT = 30.0f;
@@ -40,6 +42,7 @@ public final class VverThermal {
             return 0.0f;
         }
         float ratio = (temperatureC - damageStartC) / Math.max(1.0f, meltC - damageStartC);
+        // кубическая кривая: до порога почти ничего, а у плавления сразу мясо
         return 9.0f * ratio * ratio * ratio;
     }
 

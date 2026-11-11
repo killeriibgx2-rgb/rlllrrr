@@ -16,6 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+// require = 0 везде: если маппинги сменятся, миксин молча отвалится вместо краша
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
 

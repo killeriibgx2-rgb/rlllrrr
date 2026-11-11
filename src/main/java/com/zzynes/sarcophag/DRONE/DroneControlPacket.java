@@ -14,7 +14,9 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public class DroneControlPacket {
+    // предел пульта, дальше рвём связь и глушим дрон
     public static final double MAX_RANGE = 2100.0;
+    // за 300 блоков до предела начинаем предупреждать пилота
     public static final double WARNING_LEAD_BLOCKS = 300.0;
     public static final double WARNING_START_RANGE = MAX_RANGE - WARNING_LEAD_BLOCKS;
 

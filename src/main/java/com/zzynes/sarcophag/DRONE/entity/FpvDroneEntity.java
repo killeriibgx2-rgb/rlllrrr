@@ -50,9 +50,12 @@ import java.util.UUID;
 
 public class FpvDroneEntity extends PathfinderMob implements GeoEntity {
 
+    //не трогать без нужды, завязано на прогрузку чанков под камерой
     private static final TicketType<UUID> DRONE_CHUNK_TICKET =
             TicketType.create("sarcophag_entity", UUID::compareTo);
+    // дрон тянет за собой чанки, иначе на скорости проваливается в пустоту
     private static final int DRONE_TICKET_RADIUS = 2;
+    // сколько держим чанк на месте удара, пока крутится killcam
     private static final int IMPACT_ANCHOR_HOLD_TICKS = 88;
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
@@ -111,6 +114,7 @@ public class FpvDroneEntity extends PathfinderMob implements GeoEntity {
     protected void defineSynchedData() {
         super.defineSynchedData();
         this.entityData.define(THROTTLE, 0.0f);
+        // запас 4800, но на полном газу уходит по 3 за тик, то есть ~80 секунд
         this.entityData.define(BATTERY_TICKS, 4800);
         this.entityData.define(BATTERY_TEMP, 32.0f);
         this.entityData.define(BATTERY_VOLTAGE, 25.2f);
@@ -224,6 +228,7 @@ public class FpvDroneEntity extends PathfinderMob implements GeoEntity {
 
         if (throttle > 0.01f) {
             int ticks = this.entityData.get(BATTERY_TICKS);
+            // на полном газу ~3 тика за тик, на холостых почти не жрёт
             ticks -= Math.max(1, (int) (throttle * 3));
             if (ticks < 0) ticks = 0;
             this.entityData.set(BATTERY_TICKS, ticks);
