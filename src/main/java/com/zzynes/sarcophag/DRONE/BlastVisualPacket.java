@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -46,7 +47,7 @@ public class BlastVisualPacket {
     }
 
     public static void handle(BlastVisualPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             if (ctx.get().getDirection().getReceptionSide().isClient()) {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> BlastParticlesClient.receive(
                         packet.x, packet.y, packet.z, packet.radius,
@@ -54,6 +55,5 @@ public class BlastVisualPacket {
                 ));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

@@ -415,7 +415,7 @@ public final class BshuScreenTextures {
                 g.drawRect(x, y, cell - 1, cell - 1);
             }
             if (cell >= 30) {
-                centerText(g, group == 0 ? "СУЗ —" : "Г" + group, x + cell / 2, y + 13, 9, TEXT, true);
+                centerText(g, group == 0 ? "СУЗ -" : "Г" + group, x + cell / 2, y + 13, 9, TEXT, true);
                 centerText(g, Math.round(percent) + "%", x + cell / 2, y + cell - 6, 10, TEXT, true);
             } else if (cell >= 18) {
                 centerText(g, String.valueOf(Math.round(percent)), x + cell / 2, y + cell / 2 + 4, 9, TEXT, true);
@@ -493,10 +493,25 @@ public final class BshuScreenTextures {
         String seed = be.getSeedPos() == null ? "не задан" : be.getSeedPos().getX() + "," + be.getSeedPos().getY() + "," + be.getSeedPos().getZ();
         node(g, 164, 62, 128, 58, "ТОЧКА ВХОДА", seed, be.isLinked());
         arrow(g, 292, 91, 332, 91, be.isLinked());
-        node(g, 332, 55, 162, 72, "АКТИВНАЯ ЗОНА", "ТВС " + be.getTvsPositions().size() + " · СУЗ " + be.getSuzPositions().size(), be.isLinked());
+        node(g, 332, 55, 162, 72, "АКТИВНАЯ ЗОНА", "ТВС " + be.getTvsPositions().size() + " | СУЗ " + be.getSuzPositions().size(), be.isLinked());
         text(g, "БАЙПАС / СЛИВ / ВЕНТИЛЯЦИЯ", 18, 152, 13, TEXT, true, false);
         String[] labels = new String[]{"BP-1", "BP-2", "BP-3", "CL-1", "CL-2", "CL-3", "CL-4", "V-1", "V-2", "V-3", "V-4", "SUMP", "ISO", "P-0"};
-        BshuToggle[] toggles = new BshuToggle[]{BshuToggle.BP_1, BshuToggle.BP_2, BshuToggle.BP_3, BshuToggle.CL_1, BshuToggle.CL_2, BshuToggle.CL_3, BshuToggle.CL_4, BshuToggle.VENT_1, BshuToggle.VENT_2, BshuToggle.VENT_3, BshuToggle.VENT_4, BshuToggle.SUMP_PUMP, BshuToggle.ISOLATE, BshuToggle.PRESSURE};
+        BshuToggle[] toggles = new BshuToggle[]{
+                BshuToggle.BP_1,
+                BshuToggle.BP_2,
+                BshuToggle.BP_3,
+                BshuToggle.CL_1,
+                BshuToggle.CL_2,
+                BshuToggle.CL_3,
+                BshuToggle.CL_4,
+                BshuToggle.VENT_1,
+                BshuToggle.VENT_2,
+                BshuToggle.VENT_3,
+                BshuToggle.VENT_4,
+                BshuToggle.SUMP_PUMP,
+                BshuToggle.ISOLATE,
+                BshuToggle.PRESSURE
+        };
         for (int i = 0; i < labels.length; i++) {
             int x = 18 + (i % 7) * 69;
             int y = 164 + (i / 7) * 34;
@@ -509,7 +524,7 @@ public final class BshuScreenTextures {
             }
             pillStatus(g, x, y, 62, 24, labels[i], status);
         }
-        text(g, "Трубные графы и оборудование контуров — следующий этап", 18, 240, 12, MUTED, false, false);
+        text(g, "Трубные графы и оборудование контуров - следующий этап", 18, 240, 12, MUTED, false, false);
     }
 
     private static void drawParameters(Graphics2D g, BshuBlockEntity be, float partialTick) {
@@ -534,8 +549,8 @@ public final class BshuScreenTextures {
                 }
             }
         }
-        String average = found == 0 ? "—" : String.format(Locale.ROOT, "%.1f%%", sum / found);
-        String spread = found == 0 ? "—" : String.format(Locale.ROOT, "%.0f…%.0f%%", min, max);
+        String average = found == 0 ? "-" : String.format(Locale.ROOT, "%.1f%%", sum / found);
+        String spread = found == 0 ? "-" : String.format(Locale.ROOT, "%.0f…%.0f%%", min, max);
         String[][] rows = new String[][]{
                 {"Связь с зоной", be.isLinked() ? "УСТАНОВЛЕНА" : "НЕТ"},
                 {"ТВС загружено", loaded + " / " + be.getTvsPositions().size()},
@@ -543,7 +558,7 @@ public final class BshuScreenTextures {
                 {"Средний подъём СУЗ", average},
                 {"Диапазон СУЗ", spread},
                 {"Выбранные группы", selectedGroupsText(be)},
-                {"ГЦН 1 / 2 / 3", be.getGcnSpeed(0) + "% · " + be.getGcnSpeed(1) + "% · " + be.getGcnSpeed(2) + "%"},
+                {"ГЦН 1 / 2 / 3", be.getGcnSpeed(0) + "% | " + be.getGcnSpeed(1) + "% | " + be.getGcnSpeed(2) + "%"},
                 {"Питание отделов", powerText(be)}
         };
         int y = 52;
@@ -572,7 +587,7 @@ public final class BshuScreenTextures {
                 }
             }
         }
-        String ratio = total == 0 ? "—" : loaded + " / " + total;
+        String ratio = total == 0 ? "-" : loaded + " / " + total;
         centerText(g, ratio, 104, 104, 34, TEXT, true);
         centerText(g, "загруженных ТВС", 104, 126, 13, MUTED, false);
         int barW = 168;
@@ -610,26 +625,26 @@ public final class BshuScreenTextures {
         int vents = countToggle(be, BshuToggle.VENT_1, BshuToggle.VENT_2, BshuToggle.VENT_3, BshuToggle.VENT_4);
         int drains = countToggle(be, BshuToggle.CL_1, BshuToggle.CL_2, BshuToggle.CL_3, BshuToggle.CL_4);
         boolean turbineOn = be.getToggle(BshuToggle.TURBINE);
-        String turbineRpm = turbineOn ? "—" : "0";
-        String generation = turbineOn ? "—" : "0";
-        node(g, 16, 44, 86, 48, "ПГ", "T — · P —", be.isLinked());
+        String turbineRpm = turbineOn ? "-" : "0";
+        String generation = turbineOn ? "-" : "0";
+        node(g, 16, 44, 86, 48, "ПГ", "T - | P -", be.isLinked());
         arrow(g, 102, 68, 126, 68, turbineOn);
-        node(g, 126, 44, 86, 48, "ПАР", "T — · P —", turbineOn);
+        node(g, 126, 44, 86, 48, "ПАР", "T - | P -", turbineOn);
         arrow(g, 212, 68, 236, 68, turbineOn);
         node(g, 236, 44, 92, 48, "ТУРБИНА", turbineRpm + " об/мин", turbineOn);
         arrow(g, 328, 68, 352, 68, turbineOn);
         node(g, 352, 44, 64, 48, "ГЕН.", generation + " FE/t", turbineOn);
         arrow(g, 416, 68, 438, 68, pumps > 0);
-        node(g, 438, 44, 58, 48, "КОНД.", "T — · P —", pumps > 0);
-        node(g, 18, 100, 104, 48, "КОНДЕНСАТОР", "T — · P —", be.isLinked());
+        node(g, 438, 44, 58, 48, "КОНД.", "T - | P -", pumps > 0);
+        node(g, 18, 100, 104, 48, "КОНДЕНСАТОР", "T - | P -", be.isLinked());
         arrow(g, 122, 124, 150, 124, vents > 0);
-        node(g, 150, 100, 96, 48, "ВОДА", "T — · расх. —", vents > 0);
+        node(g, 150, 100, 96, 48, "ВОДА", "T - | расх. -", vents > 0);
         arrow(g, 246, 124, 274, 124, vents > 0);
-        node(g, 274, 100, 104, 48, "ГРАДИРНЯ", "T — · испар. —", vents > 0);
+        node(g, 274, 100, 104, 48, "ГРАДИРНЯ", "T - | испар. -", vents > 0);
         arrow(g, 378, 124, 406, 124, drains > 0);
-        node(g, 406, 100, 88, 48, "ПОДПИТКА", "объём: —", drains > 0);
-        text(g, "Турбина: " + turbineRpm + " об/мин · выработка: " + generation + " FE/t", 18, 164, 11, TEXT, true, false);
-        text(g, "Насосы: " + pumps + "/3 · A/B/C: " + valves + "/18 · вентиляция: " + vents + "/4 · слив: " + drains + "/4", 18, 178, 10, MUTED, false, false);
+        node(g, 406, 100, 88, 48, "ПОДПИТКА", "объём: -", drains > 0);
+        text(g, "Турбина: " + turbineRpm + " об/мин | выработка: " + generation + " FE/t", 18, 164, 11, TEXT, true, false);
+        text(g, "Насосы: " + pumps + "/3 | A/B/C: " + valves + "/18 | вентиляция: " + vents + "/4 | слив: " + drains + "/4", 18, 178, 10, MUTED, false, false);
     }
 
     public static int getParameterListMaxScroll(BshuBlockEntity be) {
@@ -667,7 +682,7 @@ public final class BshuScreenTextures {
 
     private static List<ParameterRow> parameterRows(BshuBlockEntity be) {
         List<ParameterRow> rows = new ArrayList<>();
-        rows.add(new ParameterRow("АКТИВНАЯ ЗОНА — ТВС", true));
+        rows.add(new ParameterRow("АКТИВНАЯ ЗОНА - ТВС", true));
         if (!be.isLinked()) {
             rows.add(new ParameterRow("Связь с активной зоной: нет", false));
         }
@@ -680,7 +695,7 @@ public final class BshuScreenTextures {
             BlockPos pos = be.getTvsPositions().get(i);
             TvsBlockEntity tvs = be.getLevel() != null && be.getLevel().getBlockEntity(pos) instanceof TvsBlockEntity found ? found : null;
             if (tvs == null) {
-                rows.add(new ParameterRow("ТВС-" + (i + 1) + " " + positionText(pos) + ": температура — · оболочка — · нет данных", false));
+                rows.add(new ParameterRow("ТВС-" + (i + 1) + " " + positionText(pos) + ": температура - | оболочка - | нет данных", false));
                 continue;
             }
             boolean loaded = false;
@@ -690,12 +705,21 @@ public final class BshuScreenTextures {
             }
             maxTvsTemperature = Math.max(maxTvsTemperature, tvs.getTemperatureC());
             minTvsIntegrity = Math.min(minTvsIntegrity, tvs.getIntegrityPercent());
-            rows.add(new ParameterRow("ТВС-" + (i + 1) + " " + positionText(pos) + ": " + temperatureText(tvs.getTemperatureC()) + " · оболочка " + integrityText(tvs.getIntegrityPercent()) + " · " + (loaded ? "загружена" : "пустая"), false));
+            rows.add(new ParameterRow("ТВС-"
+                    + (i + 1)
+                    + " "
+                    + positionText(pos)
+                    + ": "
+                    + temperatureText(tvs.getTemperatureC())
+                    + " | оболочка "
+                    + integrityText(tvs.getIntegrityPercent())
+                    + " | "
+                    + (loaded ? "загружена" : "пустая"), false));
         }
         if (Float.isFinite(maxTvsTemperature)) {
-            rows.add(new ParameterRow("Макс. температура ТВС: " + temperatureText(maxTvsTemperature) + " · мин. оболочка ТВС: " + integrityText(minTvsIntegrity), false));
+            rows.add(new ParameterRow("Макс. температура ТВС: " + temperatureText(maxTvsTemperature) + " | мин. оболочка ТВС: " + integrityText(minTvsIntegrity), false));
         }
-        rows.add(new ParameterRow("АКТИВНАЯ ЗОНА — СУЗ", true));
+        rows.add(new ParameterRow("АКТИВНАЯ ЗОНА - СУЗ", true));
         if (be.getSuzPositions().isEmpty()) {
             rows.add(new ParameterRow("СУЗ: не обнаружены", false));
         }
@@ -705,43 +729,77 @@ public final class BshuScreenTextures {
             BlockPos pos = be.getSuzPositions().get(i);
             SuzBlockEntity suz = be.getLevel() != null && be.getLevel().getBlockEntity(pos) instanceof SuzBlockEntity found ? found : null;
             if (suz == null) {
-                rows.add(new ParameterRow("СУЗ-" + (i + 1) + " " + positionText(pos) + ": температура — · оболочка — · нет данных", false));
+                rows.add(new ParameterRow("СУЗ-" + (i + 1) + " " + positionText(pos) + ": температура - | оболочка - | нет данных", false));
                 continue;
             }
             maxSuzTemperature = Math.max(maxSuzTemperature, suz.getTemperatureC());
             minSuzIntegrity = Math.min(minSuzIntegrity, suz.getIntegrityPercent());
             String group = suz.getGroup() == 0 ? "без группы" : "группа " + suz.getGroup();
-            rows.add(new ParameterRow("СУЗ-" + (i + 1) + " " + positionText(pos) + ": " + temperatureText(suz.getTemperatureC()) + " · оболочка " + integrityText(suz.getIntegrityPercent()) + " · " + group + " · подъём " + Math.round(suz.getCurrentPercent()) + "%", false));
+            rows.add(new ParameterRow("СУЗ-"
+                    + (i + 1)
+                    + " "
+                    + positionText(pos)
+                    + ": "
+                    + temperatureText(suz.getTemperatureC())
+                    + " | оболочка "
+                    + integrityText(suz.getIntegrityPercent())
+                    + " | "
+                    + group
+                    + " | подъём "
+                    + Math.round(suz.getCurrentPercent())
+                    + "%", false));
         }
         if (Float.isFinite(maxSuzTemperature)) {
-            rows.add(new ParameterRow("Макс. температура СУЗ: " + temperatureText(maxSuzTemperature) + " · мин. оболочка СУЗ: " + integrityText(minSuzIntegrity), false));
+            rows.add(new ParameterRow("Макс. температура СУЗ: " + temperatureText(maxSuzTemperature) + " | мин. оболочка СУЗ: " + integrityText(minSuzIntegrity), false));
         }
         rows.add(new ParameterRow("ОБОЛОЧКИ, КОНТУРЫ И ТРУБЫ", true));
         if (be.isVesselPresent()) {
-            rows.add(new ParameterRow("Корпус реактора: " + (be.isVesselSealed() ? "герметичен" : "не герметичен") + " · прочность обшивки " + be.getVesselIntegrityPercent() + "% · объём " + be.getVesselCapacityM3() + " м³", false));
-            rows.add(new ParameterRow("Первый контур: температура " + be.getVesselTemperatureC() + "°C · давление " + pressureText(be.getVesselPressureAtm()) + " атм · предел " + pressureText(be.getVesselPressureLimitAtm()) + " атм · вода " + be.getVesselCoolantM3() + "/" + be.getVesselCapacityM3() + " м³ · подушка " + be.getVesselGasPercent() + "% · расход —", false));
-            rows.add(new ParameterRow("Патрубки корпуса: сообщаются с полостью " + be.getVesselConnectedNozzleCount() + " · производительность петель " + be.getVesselNozzlePerformancePercent() + "%", false));
+        rows.add(new ParameterRow("Корпус реактора: "
+                    + (be.isVesselSealed() ? "герметичен" : "не герметичен")
+                    + " | прочность обшивки "
+                    + be.getVesselIntegrityPercent()
+                    + "% | объём "
+                    + be.getVesselCapacityM3()
+                    + " м³", false));
+        rows.add(new ParameterRow("Первый контур: температура "
+                    + be.getVesselTemperatureC()
+                    + "°C | давление "
+                    + pressureText(be.getVesselPressureAtm())
+                    + " атм | предел "
+                    + pressureText(be.getVesselPressureLimitAtm())
+                    + " атм | вода "
+                    + be.getVesselCoolantM3()
+                    + "/"
+                    + be.getVesselCapacityM3()
+                    + " м³ | подушка "
+                    + be.getVesselGasPercent()
+                    + "% | расход -", false));
+        rows.add(new ParameterRow("Патрубки корпуса: сообщаются с полостью "
+                    + be.getVesselConnectedNozzleCount()
+                    + " | производительность петель "
+                    + be.getVesselNozzlePerformancePercent()
+                    + "%", false));
         } else {
-            rows.add(new ParameterRow("Корпус реактора: не обнаружен · прочность обшивки —", false));
-            rows.add(new ParameterRow("Первый контур: температура — · давление — · расход —", false));
+            rows.add(new ParameterRow("Корпус реактора: не обнаружен | прочность обшивки -", false));
+            rows.add(new ParameterRow("Первый контур: температура - | давление - | расход -", false));
         }
-        rows.add(new ParameterRow("Трубы первого контура: температура — · давление — · прочность —", false));
+        rows.add(new ParameterRow("Трубы первого контура: температура - | давление - | прочность -", false));
         for (int i = 0; i < 3; i++) {
-            String strength = be.isGcnPresent(i) ? integrityText(be.getGcnIntegrity(i)) : "—";
+            String strength = be.isGcnPresent(i) ? integrityText(be.getGcnIntegrity(i)) : "-";
             String presence = be.isGcnPresent(i) ? "есть" : "оборудования нет";
-            rows.add(new ParameterRow("ГЦН-" + (i + 1) + ": " + presence + " · задание " + be.getGcnSpeed(i) + "% · прочность " + strength, false));
+            rows.add(new ParameterRow("ГЦН-" + (i + 1) + ": " + presence + " | задание " + be.getGcnSpeed(i) + "% | прочность " + strength, false));
         }
-        rows.add(new ParameterRow("Парогенератор: температура — · давление — · уровень — · прочность —", false));
-        rows.add(new ParameterRow("Второй контур: температура — · давление — · расход —", false));
-        rows.add(new ParameterRow("Трубы второго контура: температура — · давление — · прочность —", false));
-        rows.add(new ParameterRow("Конденсатор: температура — · давление — · прочность —", false));
-        rows.add(new ParameterRow("Третий контур: температура — · давление — · расход —", false));
-        rows.add(new ParameterRow("Градирня: температура — · испарение — · прочность —", false));
-        rows.add(new ParameterRow("Подпитка: объём — · расход —", false));
+        rows.add(new ParameterRow("Парогенератор: температура - | давление - | уровень - | прочность -", false));
+        rows.add(new ParameterRow("Второй контур: температура - | давление - | расход -", false));
+        rows.add(new ParameterRow("Трубы второго контура: температура - | давление - | прочность -", false));
+        rows.add(new ParameterRow("Конденсатор: температура - | давление - | прочность -", false));
+        rows.add(new ParameterRow("Третий контур: температура - | давление - | расход -", false));
+        rows.add(new ParameterRow("Градирня: температура - | испарение - | прочность -", false));
+        rows.add(new ParameterRow("Подпитка: объём - | расход -", false));
         rows.add(new ParameterRow("ТУРБИНА, ГЕНЕРАТОР И СИСТЕМЫ", true));
         boolean turbineOn = be.getToggle(BshuToggle.TURBINE);
-        rows.add(new ParameterRow("Турбина: " + (turbineOn ? "ВКЛ" : "ВЫКЛ") + " · обороты " + (turbineOn ? "—" : "0") + " об/мин · температура — · прочность —", false));
-        rows.add(new ParameterRow("Генератор: выработка " + (turbineOn ? "—" : "0") + " FE/t", false));
+        rows.add(new ParameterRow("Турбина: " + (turbineOn ? "ВКЛ" : "ВЫКЛ") + " | обороты " + (turbineOn ? "-" : "0") + " об/мин | температура - | прочность -", false));
+        rows.add(new ParameterRow("Генератор: выработка " + (turbineOn ? "-" : "0") + " FE/t", false));
         rows.add(new ParameterRow("Вентиляция: " + delayedSystemText(be, BshuToggle.VENT_1, BshuToggle.VENT_2, BshuToggle.VENT_3, BshuToggle.VENT_4), false));
         rows.add(new ParameterRow("Слив: " + delayedSystemText(be, BshuToggle.CL_1, BshuToggle.CL_2, BshuToggle.CL_3, BshuToggle.CL_4, BshuToggle.SUMP_PUMP), false));
         rows.add(new ParameterRow("Питание отделов: " + powerText(be), false));
@@ -782,7 +840,7 @@ public final class BshuScreenTextures {
             }
         }
         String state = failed ? "отказ" : starting ? "запуск" : enabled > 0 ? "включено" : "выключено";
-        return state + " · " + enabled + "/" + toggles.length;
+        return state + " | " + enabled + "/" + toggles.length;
     }
 
     private static void drawErrors(Graphics2D g, BshuBlockEntity be) {
@@ -817,7 +875,7 @@ public final class BshuScreenTextures {
             g.drawRect(x, y, tileW - 1, tileH - 1);
             drawWrappedCenter(g, errors[i].label(), x + tileW / 2, y + tileH / 2, tileW - 6, 8, label);
         }
-        text(g, "Мигание = не квитировано · ровный свет = подтверждено кнопкой KVITIR", 10, 201, 9, MUTED, false, false);
+        text(g, "Мигание = не квитировано | ровный свет = подтверждено кнопкой KVITIR", 10, 201, 9, MUTED, false, false);
     }
 
     private static void drawControl(Graphics2D g, BshuBlockEntity be) {
@@ -834,7 +892,7 @@ public final class BshuScreenTextures {
             shown += "_";
         }
         centerText(g, shown + " %", 192, 82, 38, inputColor(value), true);
-        centerText(g, focused ? "Enter — применить и выйти" : "ПКМ — ввод процента выбранных групп", 192, 111, 12, MUTED, false);
+        centerText(g, focused ? "Enter - применить и выйти" : "ПКМ - ввод процента выбранных групп", 192, 111, 12, MUTED, false);
     }
 
     private static void drawGcn(Graphics2D g, BshuBlockEntity be) {
@@ -917,11 +975,11 @@ public final class BshuScreenTextures {
                 groups.add(String.valueOf(i));
             }
         }
-        return groups.isEmpty() ? "группы: —" : "группы: " + String.join(",", groups);
+        return groups.isEmpty() ? "группы: -" : "группы: " + String.join(",", groups);
     }
 
     private static String powerText(BshuBlockEntity be) {
-        return (be.isPowered(1) ? "1" : "—") + " · " + (be.isPowered(2) ? "2" : "—") + " · " + (be.isPowered(3) ? "3" : "—");
+        return (be.isPowered(1) ? "1" : "-") + " | " + (be.isPowered(2) ? "2" : "-") + " | " + (be.isPowered(3) ? "3" : "-");
     }
 
     private static void node(Graphics2D g, int x, int y, int w, int h, String title, String subtitle, boolean active) {

@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,7 +30,7 @@ public class BshuScrollPacket {
     }
 
     public static void handle(BshuScrollPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) {
                 return;
@@ -42,6 +43,5 @@ public class BshuScrollPacket {
                 bshu.setParameterListScroll(Mth.clamp(packet.scroll, 0, 100000));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

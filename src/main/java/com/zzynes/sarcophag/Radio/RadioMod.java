@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.Radio;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import com.zzynes.sarcophag.DRONE.SarcophagMod;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
@@ -82,18 +83,6 @@ public class RadioMod {
                 .encoder(BodySyncPacket::encode)
                 .decoder(BodySyncPacket::decode)
                 .consumerMainThread(BodySyncPacket::handle)
-                .add();
-
-        CHANNEL.messageBuilder(VoicePacket.class, 2, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(VoicePacket::encode)
-                .decoder(VoicePacket::decode)
-                .consumerMainThread(VoicePacket::handle)
-                .add();
-
-        CHANNEL.messageBuilder(VoicePlayPacket.class, 3, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(VoicePlayPacket::encode)
-                .decoder(VoicePlayPacket::decode)
-                .consumerMainThread(VoicePlayPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(RadioSignalPacket.class, 4, NetworkDirection.PLAY_TO_SERVER)
@@ -313,7 +302,7 @@ public class RadioMod {
         }
 
         public static void handle(SetFreqPacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
+            PacketUtil.run(ctx, () -> {
                 ServerPlayer player = ctx.get().getSender();
 
                 if (player == null) {
@@ -337,8 +326,6 @@ public class RadioMod {
                     stack.getOrCreateTag().putInt("Frequency", p.freq);
                 }
             });
-
-            ctx.get().setPacketHandled(true);
         }
     }
 
@@ -361,62 +348,11 @@ public class RadioMod {
         }
 
         public static void handle(BodySyncPacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
+            PacketUtil.run(ctx, () -> {
                 if (ctx.get().getDirection().getReceptionSide().isClient()) {
                     DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> RadioClient.updateRadioState(p.playerId, p.hasRadio));
                 }
             });
-
-            ctx.get().setPacketHandled(true);
-        }
-    }
-
-    public static class VoicePacket {
-        private final int frequency;
-        private final byte[] audioData;
-
-        public VoicePacket(int frequency, byte[] audioData) {
-            this.frequency = frequency;
-            this.audioData = audioData;
-        }
-
-        public static void encode(VoicePacket p, FriendlyByteBuf buf) {
-            buf.writeVarInt(p.frequency);
-            buf.writeByteArray(p.audioData);
-        }
-
-        public static VoicePacket decode(FriendlyByteBuf buf) {
-            return new VoicePacket(buf.readVarInt(), buf.readByteArray());
-        }
-
-        public static void handle(VoicePacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
-            });
-
-            ctx.get().setPacketHandled(true);
-        }
-    }
-
-    public static class VoicePlayPacket {
-        private final byte[] audioData;
-
-        public VoicePlayPacket(byte[] audioData) {
-            this.audioData = audioData;
-        }
-
-        public static void encode(VoicePlayPacket p, FriendlyByteBuf buf) {
-            buf.writeByteArray(p.audioData);
-        }
-
-        public static VoicePlayPacket decode(FriendlyByteBuf buf) {
-            return new VoicePlayPacket(buf.readByteArray());
-        }
-
-        public static void handle(VoicePlayPacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
-            });
-
-            ctx.get().setPacketHandled(true);
         }
     }
 
@@ -454,7 +390,7 @@ public class RadioMod {
         }
 
         public static void handle(VoiceChunkPacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
+            PacketUtil.run(ctx, () -> {
                 if (p.data.length > AUDIO_CHUNK_SIZE) {
                     return;
                 }
@@ -518,8 +454,6 @@ public class RadioMod {
                     }
                 }
             });
-
-            ctx.get().setPacketHandled(true);
         }
     }
 
@@ -563,7 +497,7 @@ public class RadioMod {
         }
 
         public static void handle(VoicePlayChunkPacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
+            PacketUtil.run(ctx, () -> {
                 if (p.data.length > AUDIO_CHUNK_SIZE) {
                     return;
                 }
@@ -614,8 +548,6 @@ public class RadioMod {
                     });
                 }
             });
-
-            ctx.get().setPacketHandled(true);
         }
 
         private static class AudioAssembly {
@@ -645,7 +577,7 @@ public class RadioMod {
         }
 
         public static void handle(RadioSignalPacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
+            PacketUtil.run(ctx, () -> {
                 ServerPlayer sender = ctx.get().getSender();
 
                 if (sender == null) {
@@ -682,8 +614,6 @@ public class RadioMod {
                     }
                 }
             });
-
-            ctx.get().setPacketHandled(true);
         }
     }
 
@@ -703,13 +633,11 @@ public class RadioMod {
         }
 
         public static void handle(RadioReceiveOverlayPacket p, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
+            PacketUtil.run(ctx, () -> {
                 if (ctx.get().getDirection().getReceptionSide().isClient()) {
                     DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> RadioClient.showReceiveOverlay(p.frequency));
                 }
             });
-
-            ctx.get().setPacketHandled(true);
         }
     }
 

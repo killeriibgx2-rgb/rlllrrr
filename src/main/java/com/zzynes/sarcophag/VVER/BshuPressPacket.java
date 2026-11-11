@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -50,7 +51,7 @@ public class BshuPressPacket {
     }
 
     public static void handle(BshuPressPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null || packet.controlOrdinal < 0 || packet.controlOrdinal >= BshuControl.values().length) {
                 return;
@@ -76,6 +77,5 @@ public class BshuPressPacket {
                 bshu.press(BshuControl.values()[packet.controlOrdinal], packet.pairOn);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }
