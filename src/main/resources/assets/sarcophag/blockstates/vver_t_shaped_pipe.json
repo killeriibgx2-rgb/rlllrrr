@@ -1,0 +1,48 @@
+{
+  "variants": {
+    "orientation=south_x": {
+      "model": "sarcophag:block/vver_t_shaped_pipe"
+    },
+    "orientation=west_z": {
+      "model": "sarcophag:block/vver_t_shaped_pipe",
+      "y": 90
+    },
+    "orientation=north_x": {
+      "model": "sarcophag:block/vver_t_shaped_pipe",
+      "y": 180
+    },
+    "orientation=east_z": {
+      "model": "sarcophag:block/vver_t_shaped_pipe",
+      "y": 270
+    },
+    "orientation=south_y": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_vertical"
+    },
+    "orientation=west_y": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_vertical",
+      "y": 90
+    },
+    "orientation=north_y": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_vertical",
+      "y": 180
+    },
+    "orientation=east_y": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_vertical",
+      "y": 270
+    },
+    "orientation=up_x": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_up"
+    },
+    "orientation=up_z": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_up",
+      "y": 90
+    },
+    "orientation=down_x": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_down"
+    },
+    "orientation=down_z": {
+      "model": "sarcophag:block/vver_t_shaped_pipe_down",
+      "y": 90
+    }
+  }
+}

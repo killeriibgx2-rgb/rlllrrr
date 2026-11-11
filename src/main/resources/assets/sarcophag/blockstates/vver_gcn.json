@@ -1,0 +1,40 @@
+{
+  "variants": {
+    "facing=north,part=0": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=north,part=1": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=north,part=2": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=south,part=0": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=south,part=1": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=south,part=2": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=west,part=0": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=west,part=1": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=west,part=2": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=east,part=0": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=east,part=1": {
+      "model": "sarcophag:block/vver_gcn"
+    },
+    "facing=east,part=2": {
+      "model": "sarcophag:block/vver_gcn"
+    }
+  }
+}

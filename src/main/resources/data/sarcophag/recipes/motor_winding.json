@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "WWW",
+    "WSW",
+    "WWW"
+  ],
+  "key": {
+    "W": { "item": "sarcophag:copper_wire" },
+    "S": { "item": "sarcophag:motor_shaft" }
+  },
+  "result": {
+    "item": "sarcophag:motor_winding",
+    "count": 1
+  }
+}

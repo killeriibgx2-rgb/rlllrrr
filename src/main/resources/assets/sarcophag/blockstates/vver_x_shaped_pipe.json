@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "missing_axis=x": {
+      "model": "sarcophag:block/vver_x_shaped_pipe_yz"
+    },
+    "missing_axis=y": {
+      "model": "sarcophag:block/vver_x_shaped_pipe"
+    },
+    "missing_axis=z": {
+      "model": "sarcophag:block/vver_x_shaped_pipe_xy"
+    }
+  }
+}

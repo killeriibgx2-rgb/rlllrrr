@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "sarcophag:lithium_ingot" },
+    { "item": "sarcophag:stal_molot" }
+  ],
+  "result": {
+    "item": "sarcophag:lithium_plate",
+    "count": 1
+  }
+}

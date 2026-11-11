@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/slab",
+  "textures": {
+    "bottom": "sarcophag:block/beton_dense",
+    "top": "sarcophag:block/beton_dense",
+    "side": "sarcophag:block/beton_dense",
+    "particle": "sarcophag:block/beton_dense"
+  }
+}

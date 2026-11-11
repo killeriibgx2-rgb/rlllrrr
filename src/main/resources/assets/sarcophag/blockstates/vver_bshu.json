@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "sarcophag:block/vver_bshu"
+    },
+    "facing=south": {
+      "model": "sarcophag:block/vver_bshu"
+    },
+    "facing=west": {
+      "model": "sarcophag:block/vver_bshu"
+    },
+    "facing=east": {
+      "model": "sarcophag:block/vver_bshu"
+    }
+  }
+}

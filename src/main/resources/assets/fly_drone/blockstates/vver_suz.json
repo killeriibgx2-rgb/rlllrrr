@@ -1,7 +1,0 @@
-{
-  "variants": {
-    "part=0": { "model": "fly_drone:block/suz_frame_bottom" },
-    "part=1": { "model": "fly_drone:block/suz_frame_middle" },
-    "part=2": { "model": "fly_drone:block/suz_frame_top" }
-  }
-}

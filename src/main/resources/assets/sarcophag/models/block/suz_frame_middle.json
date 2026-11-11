@@ -1,0 +1,15 @@
+{
+  "loader": "forge:obj",
+  "model": "sarcophag:models/block/suz_frame_middle.obj",
+  "mtl_override": "sarcophag:models/block/suz.mtl",
+  "render_type": "minecraft:solid",
+  "flip_v": true,
+  "automatic_culling": false,
+  "shade_quads": false,
+  "emissive_ambient": false,
+  "textures": {
+    "particle": "sarcophag:block/suz_frame",
+    "suz_frame": "sarcophag:block/suz_frame",
+    "suz_rods": "sarcophag:block/suz_rods"
+  }
+}

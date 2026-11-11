@@ -1,0 +1,14 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "sarcophag:block/vver_pipe"
+    },
+    "axis=y": {
+      "model": "sarcophag:block/vver_pipe_vertical"
+    },
+    "axis=z": {
+      "model": "sarcophag:block/vver_pipe",
+      "y": 90
+    }
+  }
+}

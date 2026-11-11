@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "sarcophag:bunker_reinforced_concrete_dense"
+  },
+  "result": "sarcophag:bunker_reinforced_concrete_dense_slab",
+  "count": 2
+}

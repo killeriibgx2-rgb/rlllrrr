@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "sarcophag:block/domm_kip",
+    "front": "sarcophag:block/domm_pan",
+    "side": "sarcophag:block/domm_kip"
+  }
+}

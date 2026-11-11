@@ -1,0 +1,49 @@
+{
+  "variants": {
+    "bend=flat,facing=west": {
+      "model": "sarcophag:block/vver_corner_pipe"
+    },
+    "bend=flat,facing=north": {
+      "model": "sarcophag:block/vver_corner_pipe",
+      "y": 90
+    },
+    "bend=flat,facing=east": {
+      "model": "sarcophag:block/vver_corner_pipe",
+      "y": 180
+    },
+    "bend=flat,facing=south": {
+      "model": "sarcophag:block/vver_corner_pipe",
+      "y": 270
+    },
+    "bend=up,facing=west": {
+      "model": "sarcophag:block/vver_corner_pipe_up"
+    },
+    "bend=up,facing=north": {
+      "model": "sarcophag:block/vver_corner_pipe_up",
+      "y": 90
+    },
+    "bend=up,facing=east": {
+      "model": "sarcophag:block/vver_corner_pipe_up",
+      "y": 180
+    },
+    "bend=up,facing=south": {
+      "model": "sarcophag:block/vver_corner_pipe_up",
+      "y": 270
+    },
+    "bend=down,facing=west": {
+      "model": "sarcophag:block/vver_corner_pipe_down"
+    },
+    "bend=down,facing=north": {
+      "model": "sarcophag:block/vver_corner_pipe_down",
+      "y": 90
+    },
+    "bend=down,facing=east": {
+      "model": "sarcophag:block/vver_corner_pipe_down",
+      "y": 180
+    },
+    "bend=down,facing=south": {
+      "model": "sarcophag:block/vver_corner_pipe_down",
+      "y": 270
+    }
+  }
+}

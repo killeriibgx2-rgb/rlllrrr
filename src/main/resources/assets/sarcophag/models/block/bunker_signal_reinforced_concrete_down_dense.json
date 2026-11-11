@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "sarcophag:block/rust_grid_dense",
+    "top": "sarcophag:block/rust_grid_dense",
+    "side": "sarcophag:block/beton_razmetka_down_dense",
+    "particle": "sarcophag:block/beton_razmetka_down_dense"
+  }
+}

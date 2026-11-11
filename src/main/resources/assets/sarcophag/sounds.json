@@ -1,0 +1,15 @@
+{
+  "item.air_siren": {
+    "sounds": [
+      {
+        "name": "sarcophag:item/air_siren",
+        "stream": true
+      }
+    ]
+  },
+  "block.vver_valve.turn": {
+    "sounds": [
+      "sarcophag:vver_valve_turn"
+    ]
+  }
+}

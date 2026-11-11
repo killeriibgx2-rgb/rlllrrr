@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "sarcophag:block/metal_beam_support"
+    },
+    "axis=z": {
+      "model": "sarcophag:block/metal_beam_support",
+      "y": 90
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "PMP",
+    "BSU",
+    "PCP"
+  ],
+  "key": {
+    "P": { "item": "sarcophag:propeller_fpv" },
+    "M": { "item": "sarcophag:motor_fpv" },
+    "B": { "item": "sarcophag:battery" },
+    "S": { "item": "sarcophag:sandwich_panel" },
+    "C": { "item": "sarcophag:camera_fpv" },
+    "U": { "item": "sarcophag:microcontroller" }
+  },
+  "result": {
+    "item": "sarcophag:fpv_drone",
+    "count": 1
+  }
+}

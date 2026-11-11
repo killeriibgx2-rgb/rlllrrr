@@ -1,0 +1,15 @@
+newmtl material_003
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.0
+illum 1
+map_Kd sarcophag:block/suz_rods
+
+newmtl material_004
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.0
+illum 1
+map_Kd sarcophag:block/suz_frame

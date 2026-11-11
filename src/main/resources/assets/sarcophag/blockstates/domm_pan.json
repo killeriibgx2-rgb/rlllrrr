@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "sarcophag:block/domm_pan", "y": 0 },
+    "facing=east":  { "model": "sarcophag:block/domm_pan", "y": 90 },
+    "facing=south": { "model": "sarcophag:block/domm_pan", "y": 180 },
+    "facing=west":  { "model": "sarcophag:block/domm_pan", "y": 270 }
+  }
+}

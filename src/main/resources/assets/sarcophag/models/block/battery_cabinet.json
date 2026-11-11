@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "sarcophag:block/battery_cabinet",
+    "particle": "sarcophag:block/battery_cabinet"
+  }
+}

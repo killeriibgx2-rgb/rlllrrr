@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.zzynes.sarcophag.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "com.zzynes.sarcophag.mixin.SarcophagMixinPlugin",
+  "refmap": "sarcophag-refmap.json",
+  "mixins": [
+    "ChunkMapMixin",
+    "TrackedEntityMixin"
+  ],
+  "client": [
+    "LevelRendererMixin",
+    "LevelRendererVanillaOriginMixin",
+    "CameraMixin",
+    "ClientPacketListenerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

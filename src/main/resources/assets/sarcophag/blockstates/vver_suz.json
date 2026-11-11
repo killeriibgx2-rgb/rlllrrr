@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "part=0": { "model": "sarcophag:block/suz_frame_bottom" },
+    "part=1": { "model": "sarcophag:block/suz_frame_middle" },
+    "part=2": { "model": "sarcophag:block/suz_frame_top" }
+  }
+}
