@@ -40,16 +40,20 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = SarcophagMod.MOD_ID, value = Dist.CLIENT)
 public final class FpvKillcamManager {
 
+    // 2 секунды до удара и 2 после, ровно это и крутим в реплее
     public static final int PRE_TICKS = 40;
     public static final int POST_TICKS = 40;
     public static final int TOTAL_TICKS = PRE_TICKS + POST_TICKS;
 
+    // кольцевой буфер истории, 512 тиков это ~25 секунд при 20 tps
     private static final int RING_CAPACITY = 512;
     private static final int RING_MASK = RING_CAPACITY - 1;
+    // пишем только то, что рядом, весь мир в реплей не тянем
     private static final double RECORD_RADIUS_SQR = 42.0 * 42.0;
     private static final double PROJECTILE_RECORD_RADIUS_SQR = 52.0 * 52.0;
 
     private static final WorldTickFrame[] RING = new WorldTickFrame[RING_CAPACITY];
+    // первый тик, когда сущность попала в кадр, чтобы не рисовать её раньше времени
     private static final Int2IntOpenHashMap FIRST_SEEN_SEQ = new Int2IntOpenHashMap();
     private static final IntOpenHashSet RENDERED_THIS_FRAME = new IntOpenHashSet();
 
@@ -78,6 +82,7 @@ public final class FpvKillcamManager {
     private static Vec3 impactPos = Vec3.ZERO;
     private static double startOrbitAngle = 0.0;
     private static float orbitSign = 1.0f;
+    // сглаживание отъезда камеры, иначе дёргает на каждом препятствии
     private static double smoothedClipRatio = 1.0;
 
     private static Vec3 currentCamPos = Vec3.ZERO;
@@ -86,6 +91,7 @@ public final class FpvKillcamManager {
     private static float currentCamRoll = 0.0f;
 
     @Nullable
+    // призрак дрона на время реплея, чтобы камера не прилипала к трупу
     private static FpvDroneEntity ghostDrone = null;
 
     static {

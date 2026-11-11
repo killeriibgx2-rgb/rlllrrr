@@ -597,6 +597,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
     }
 
     public int applyRodInput(int value) {
+        // АЗ-5 и удержание стержней блокируют ручное управление, как на настоящем БЩУ
         if (this.level == null || this.level.isClientSide || !isScreenPowered(BshuScreenType.CONTROL) || !this.linked || this.az5Active || getToggle(BshuToggle.ROD_HOLD)) {
             return -1;
         }
@@ -621,6 +622,7 @@ public class BshuBlockEntity extends BlockEntity implements GeoBlockEntity {
         return affected;
     }
 
+    // битовая маска аварий, её удобно квитировать и гнать на клиент одним числом
     public long computeActiveErrorMask() {
         long mask = 0L;
         if (!isPowered(1)) {

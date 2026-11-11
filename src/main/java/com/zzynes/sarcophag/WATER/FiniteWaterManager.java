@@ -30,28 +30,34 @@ import java.util.Map;
 import java.util.Random;
 import java.util.WeakHashMap;
 
+// конечная вода: объём хранится по клеткам, всё остальное считается от него
 public final class FiniteWaterManager {
     public static final int BUCKET_UNITS = 10;
     public static final int MILLIBUCKETS_PER_UNIT = 100;
     public static final int BUCKET_MILLIBUCKETS = BUCKET_UNITS * MILLIBUCKETS_PER_UNIT;
     private static final int MAX_UNITS = BUCKET_MILLIBUCKETS;
     private static final int MAX_BODY_UNITS = 20000 * MILLIBUCKETS_PER_UNIT;
+    // потолок по клеткам скана, на большом озере без него сервер ложится
     private static final int MAX_SCAN_CELLS = 40000;
     private static final int EQUALIZE_STEPS = 16;
+    // поверхность выравниваем порциями, за тик столько успеваем
     private static final int EQUALIZE_MAX_CELLS = 512;
     private static final int EQUALIZE_MAX_MOVES = 16;
     private static final int EQUALIZE_TASKS_PER_TICK = 2;
     private static final int PRESSURE_SEARCHES_PER_TICK = 2;
     private static final long EQUALIZE_COOLDOWN_TICKS = 10L;
     private static final long EQUALIZE_CHANGED_COOLDOWN_TICKS = 4L;
+    // Вода считается раз в 2 тика, как в ванили
     private static final int TICK_DELAY = 2;
     private static final long LARGE_HINT_TICKS = 100L;
     private static final int COMPONENT_WAKE_MAX_CELLS = 512;
     private static final long COMPONENT_WAKE_INTERVAL_TICKS = 10L;
     private static final long SAFETY_SCAN_INTERVAL_TICKS = 10L;
+    //todo: можно поднять, но пока tps важнее
     private static final int SAFETY_SCAN_CELLS_PER_RUN = 256;
     private static final int SAFETY_WAKE_PER_RUN = 64;
     private static final Direction[] HORIZONTAL_DIRECTIONS = new Direction[]{Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+    // кэш по уровням, weak - чтобы не течь при выходе из мира
     private static final Map<Level, FiniteWaterData.Memory> CLIENT_MEMORY = new WeakHashMap<>();
 
     private FiniteWaterManager() {
@@ -1387,6 +1393,7 @@ public final class FiniteWaterManager {
         return false;
     }
 
+    // вода лезет вверх только если снизу есть опора, иначе фонтан из ничего
     private static boolean tryPressureRise(Level level, BlockPos pos, int units, Session session) {
         if (units < MAX_UNITS) {
             return false;

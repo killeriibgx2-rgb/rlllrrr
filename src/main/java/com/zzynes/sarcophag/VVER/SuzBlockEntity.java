@@ -16,6 +16,7 @@ import javax.annotation.Nullable;
 
 public class SuzBlockEntity extends BlockEntity {
 
+    // полный ход 2.92 блока, 0-100% за 8 секунд - быстрее стержень начинает дёргаться
     public static final float MAX_LIFT_BLOCKS = 2.92f;
     private static final float MAX_SPEED_PERCENT_PER_TICK = 0.668f;
     private static final float ACCEL_PERCENT_PER_TICK = 0.08f;
@@ -49,6 +50,7 @@ public class SuzBlockEntity extends BlockEntity {
             return;
         }
         float sign = diff > 0.0f ? 1.0f : -1.0f;
+        // тормозим по корню от остатка пути, иначе у самой цели стержень проскакивает и дрожит
         float stopSpeed = Math.min(MAX_SPEED_PERCENT_PER_TICK, Math.max(MIN_CRAWL_SPEED, Mth.sqrt(BRAKE_FACTOR * dist)));
         float desiredVel = sign * stopSpeed;
         float deltaVel = desiredVel - entity.velocityPercent;
@@ -157,6 +159,7 @@ public class SuzBlockEntity extends BlockEntity {
         }
         this.integrityPercent = next;
         this.setChanged();
+        // Синк температуры раз в секунду, каждый тик гонять пакет незачем
         if (this.thermalSyncCooldown-- <= 0) {
             this.thermalSyncCooldown = 20;
             sync();
@@ -167,6 +170,7 @@ public class SuzBlockEntity extends BlockEntity {
         if (this.level == null || this.level.isClientSide) {
             return;
         }
+        // цель сдвинули, а стержень не сдвинулся - значит заклинило
         if (Math.abs(this.targetPercent - this.currentPercent) > 0.5f && Math.abs(this.currentPercent - beforeMove) <= 0.0001f) {
             this.stuckTicks++;
         } else {

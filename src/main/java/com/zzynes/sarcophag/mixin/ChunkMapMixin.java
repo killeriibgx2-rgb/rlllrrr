@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+// подменяем позицию игрока на позицию дрона, иначе чанки грузятся вокруг тела
 @Mixin(ChunkMap.class)
 public abstract class ChunkMapMixin {
 

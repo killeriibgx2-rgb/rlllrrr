@@ -76,6 +76,7 @@ public class DroneRemoteItem extends Item {
             FpvDroneEntity drone = findDroneServer(serverLevel, droneUUID);
 
             if (drone == null) {
+                // дрон был в загруженном чанке и пропал - значит его сбили
                 if (isLastChunkLoaded(serverLevel, tag)) {
                     disconnectHand(serverPlayer, hand, droneUUID, DroneText.DRONE_LOST);
                     return InteractionResultHolder.fail(player.getItemInHand(hand));

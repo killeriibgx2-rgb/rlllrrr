@@ -74,6 +74,7 @@ public final class PipReplayRenderer {
 
     public static void drawReplay(GuiGraphics gui, int x, int y, int width, int height) {
         Minecraft mc = Minecraft.getInstance();
+        // без захваченной проекции рисовать нечего
         if (mc.level == null || !projectionCaptured || !ProjectileImpactPreview.isActive()) {
             return;
         }
@@ -82,6 +83,7 @@ public final class PipReplayRenderer {
             return;
         }
         if (target == null) {
+            // отдельный фреймбуфер, потом картинка кладётся в гуи обычной текстурой
             target = new TextureTarget(TARGET_WIDTH, TARGET_HEIGHT, true, Minecraft.ON_OSX);
             target.setClearColor(0.015f, 0.022f, 0.03f, 1.0f);
         }
@@ -90,6 +92,7 @@ public final class PipReplayRenderer {
         }
 
         Matrix4f previousProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+        // fov как у камеры дрона, иначе в окошке другая геометрия
         Matrix4f projection = new Matrix4f().perspective((float) Math.toRadians(70.0), TARGET_WIDTH / (float) TARGET_HEIGHT, 0.05f, 256.0f);
         RenderTarget mainTarget = mc.getMainRenderTarget();
         int windowWidth = mc.getWindow().getWidth();
@@ -115,6 +118,7 @@ public final class PipReplayRenderer {
             RenderSystem.setProjectionMatrix(projection, VertexSorting.DISTANCE_TO_ORIGIN);
             mc.levelRenderer.renderLevel(new PoseStack(), 1.0f, System.nanoTime(), false, camera, mc.gameRenderer, mc.gameRenderer.lightTexture(), projection);
         } catch (RuntimeException | LinkageError e) {
+            // шейдеры или оптифайн сломали рендер - гасим PiP до перезапуска, но игру не роняем
             secondaryRenderDisabled = true;
             LOGGER.warn("Disabling Sarcophag PiP secondary world render for this session", e);
         } finally {

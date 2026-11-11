@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class FpvCameraAnchor {
 
+    // пока пилот в FPV, его тело должно тикать, иначе вернётся в незагруженный чанк
     private static final TicketType<UUID> PLAYER_BODY_TICKET =
             TicketType.create("sarcophag_player_body", UUID::compareTo);
     private static final TicketType<UUID> PLAYER_RETURN_TICKET =
@@ -27,6 +28,7 @@ public final class FpvCameraAnchor {
 
     private static final int BODY_TICKET_RADIUS = 3;
     private static final int IMPACT_TICKET_RADIUS = 3;
+    // 3 секунды после возврата не даём мобам сразу бить
     private static final long RETURN_PROTECTION_TICKS = 60L;
 
     private static final Map<UUID, FpvDroneEntity> ACTIVE_DRONES = new ConcurrentHashMap<>();

@@ -12,6 +12,7 @@ import java.util.Set;
 public final class SarcophagMixinPlugin implements IMixinConfigPlugin {
 
     private static final String VANILLA_ORIGIN_MIXIN = "com.zzynes.sarcophag.mixin.LevelRendererVanillaOriginMixin";
+    // на этих рендерерах ванильный путь не трогаем, иначе PiP ломается
     private static final String[] REPLACEMENT_RENDERER_MODS = {
             "embeddium",
             "rubidium",
