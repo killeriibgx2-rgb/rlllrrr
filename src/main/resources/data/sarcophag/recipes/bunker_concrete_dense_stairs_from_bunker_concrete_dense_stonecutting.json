@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "sarcophag:bunker_concrete_dense"
+  },
+  "result": "sarcophag:bunker_concrete_dense_stairs",
+  "count": 1
+}

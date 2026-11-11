@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "#": {
+      "item": "sarcophag:bunker_concrete_dense"
+    }
+  },
+  "pattern": [
+    "###"
+  ],
+  "result": {
+    "item": "sarcophag:bunker_concrete_dense_slab",
+    "count": 6
+  }
+}

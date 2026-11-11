@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "sarcophag:block/vver_reactor_hull",
+    "front": "sarcophag:block/vver_reactor_hull_nozzle",
+    "side": "sarcophag:block/vver_reactor_hull"
+  }
+}

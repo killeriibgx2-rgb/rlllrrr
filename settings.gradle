@@ -6,4 +6,4 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = "fly_drone"
+rootProject.name = "sarcophag"

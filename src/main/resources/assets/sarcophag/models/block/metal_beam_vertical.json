@@ -1,0 +1,45 @@
+{
+  "textures": {
+    "side": "sarcophag:block/metal_beam_support",
+    "end": "sarcophag:block/metal_beam_end",
+    "particle": "sarcophag:block/metal_beam_support"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 4],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 16], "texture": "#side"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#side"},
+        "east": {"uv": [0, 0, 4, 16], "texture": "#end"},
+        "west": {"uv": [0, 0, 4, 16], "texture": "#end"},
+        "up": {"uv": [0, 0, 16, 4], "texture": "#end"},
+        "down": {"uv": [0, 0, 16, 4], "texture": "#end"}
+      }
+    },
+    {
+      "from": [0, 0, 12],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 16], "texture": "#side"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#side"},
+        "east": {"uv": [0, 0, 4, 16], "texture": "#end"},
+        "west": {"uv": [0, 0, 4, 16], "texture": "#end"},
+        "up": {"uv": [0, 0, 16, 4], "texture": "#end"},
+        "down": {"uv": [0, 0, 16, 4], "texture": "#end"}
+      }
+    },
+    {
+      "from": [6, 0, 4],
+      "to": [10, 16, 12],
+      "faces": {
+        "north": {"uv": [0, 0, 4, 16], "texture": "#side"},
+        "south": {"uv": [0, 0, 4, 16], "texture": "#side"},
+        "east": {"uv": [0, 0, 8, 16], "texture": "#side"},
+        "west": {"uv": [0, 0, 8, 16], "texture": "#side"},
+        "up": {"uv": [0, 0, 4, 8], "texture": "#end"},
+        "down": {"uv": [0, 0, 4, 8], "texture": "#end"}
+      }
+    }
+  ]
+}

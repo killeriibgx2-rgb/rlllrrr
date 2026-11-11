@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "CPC",
+    "BBB",
+    "BBB"
+  ],
+  "key": {
+    "C": { "item": "minecraft:copper_ingot" },
+    "P": { "item": "sarcophag:copper_plate" },
+    "B": { "item": "sarcophag:battery_cell" }
+  },
+  "result": {
+    "item": "sarcophag:battery",
+    "count": 1
+  }
+}

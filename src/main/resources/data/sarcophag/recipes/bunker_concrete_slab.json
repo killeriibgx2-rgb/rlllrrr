@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "#": {
+      "item": "sarcophag:bunker_concrete"
+    }
+  },
+  "pattern": [
+    "###"
+  ],
+  "result": {
+    "item": "sarcophag:bunker_concrete_slab",
+    "count": 6
+  }
+}

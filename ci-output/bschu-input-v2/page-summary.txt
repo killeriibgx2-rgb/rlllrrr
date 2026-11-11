@@ -1,4 +1,0 @@
-download candidates: 3
-BSHU_full_buttons_animations_painted.geo.json -> https://drop5.dropmefiles.com/dl/K3dt1/1128462449
-BSHU_full_buttons_animations_painted.geo.json -> https://drop5.dropmefile.com/dl/K3dt1
-download_all.bin -> https://drop5.dropmefile.com/dl/K3dt1

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " C ",
+    " S ",
+    " W "
+  ],
+  "key": {
+    "C": { "item": "sarcophag:motor_casing" },
+    "S": { "item": "sarcophag:motor_shaft" },
+    "W": { "item": "sarcophag:motor_winding" }
+  },
+  "result": {
+    "item": "sarcophag:motor_fpv",
+    "count": 1
+  }
+}

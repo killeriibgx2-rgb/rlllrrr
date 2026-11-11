@@ -1,9 +1,9 @@
 {
   "replace": false,
   "values": [
-    "fly_drone:bunker_concrete_slab",
-    "fly_drone:bunker_concrete_dense_slab",
-    "fly_drone:bunker_reinforced_concrete_slab",
-    "fly_drone:bunker_reinforced_concrete_dense_slab"
+    "sarcophag:bunker_concrete_slab",
+    "sarcophag:bunker_concrete_dense_slab",
+    "sarcophag:bunker_reinforced_concrete_slab",
+    "sarcophag:bunker_reinforced_concrete_dense_slab"
   ]
 }

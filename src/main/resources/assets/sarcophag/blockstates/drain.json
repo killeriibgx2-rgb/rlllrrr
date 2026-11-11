@@ -1,0 +1,12 @@
+{
+  "multipart": [
+    {
+      "when": { "half": "bottom" },
+      "apply": { "model": "sarcophag:block/drain" }
+    },
+    {
+      "when": { "half": "top" },
+      "apply": { "model": "sarcophag:block/drain", "x": 180 }
+    }
+  ]
+}

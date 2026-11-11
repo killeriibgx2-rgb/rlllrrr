@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "sarcophag:block/bunker_reinforced_concrete_slab"
+    },
+    "type=double": {
+      "model": "sarcophag:block/bunker_reinforced_concrete"
+    },
+    "type=top": {
+      "model": "sarcophag:block/bunker_reinforced_concrete_slab_top"
+    }
+  }
+}

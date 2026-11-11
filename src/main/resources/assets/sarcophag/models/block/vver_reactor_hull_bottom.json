@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "up": "sarcophag:block/vver_reactor_hull_bottom",
+    "down": "sarcophag:block/vver_reactor_hull_bottom",
+    "north": "sarcophag:block/vver_reactor_hull",
+    "south": "sarcophag:block/vver_reactor_hull",
+    "east": "sarcophag:block/vver_reactor_hull",
+    "west": "sarcophag:block/vver_reactor_hull",
+    "particle": "sarcophag:block/vver_reactor_hull_bottom"
+  }
+}

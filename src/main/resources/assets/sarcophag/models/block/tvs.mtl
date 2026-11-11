@@ -1,0 +1,39 @@
+newmtl steel_light
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.0
+illum 1
+map_Kd sarcophag:block/tvs_steel_light
+
+newmtl steel_dark
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.0
+illum 1
+map_Kd sarcophag:block/tvs_steel_dark
+
+newmtl green_metal
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.0
+illum 1
+map_Kd sarcophag:block/tvs_green_metal
+
+newmtl zirconium
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.0
+illum 1
+map_Kd sarcophag:block/tvs_zirconium
+
+newmtl rod_steel
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.0
+illum 1
+map_Kd sarcophag:block/tvs_rod_steel

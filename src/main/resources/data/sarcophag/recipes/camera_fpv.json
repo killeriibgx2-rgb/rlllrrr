@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "CCC",
+    "GWM",
+    "CCC"
+  ],
+  "key": {
+    "C": { "item": "minecraft:gray_concrete" },
+    "G": { "item": "minecraft:glass_pane" },
+    "W": { "item": "sarcophag:copper_wire" },
+    "M": { "item": "sarcophag:copper_plate" }
+  },
+  "result": {
+    "item": "sarcophag:camera_fpv",
+    "count": 1
+  }
+}

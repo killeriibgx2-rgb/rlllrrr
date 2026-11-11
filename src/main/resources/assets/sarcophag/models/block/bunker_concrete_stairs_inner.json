@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/inner_stairs",
+  "textures": {
+    "bottom": "sarcophag:block/beton",
+    "top": "sarcophag:block/beton",
+    "side": "sarcophag:block/beton",
+    "particle": "sarcophag:block/beton"
+  }
+}

@@ -4,12 +4,10 @@ on:
   push:
     branches:
       - "arena/**"
-    paths-ignore:
-      - "ci-output/**"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -42,26 +40,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: fly_drone-jar
+          name: sarcophag-jar
           path: build/libs/*.jar
           if-no-files-found: error
-
-      - name: Publish outputs to branch
-        if: always()
-        run: |
-          mkdir -p ci-output
-          tail -n 4000 build-output.log > ci-output/build-output.log || true
-          cp build/libs/fly_drone-*.jar ci-output/ 2>/dev/null || true
-          rm -f ci-output/*-sources.jar ci-output/*-dev.jar ci-output/*-javadoc.jar
-          ls -lah ci-output || true
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci-output
-          if git diff --cached --quiet; then
-            echo "No outputs to publish"
-            exit 0
-          fi
-          git commit -m "CI outputs [skip ci]"
-          git fetch origin "${{ github.ref_name }}"
-          git rebase "origin/${{ github.ref_name }}" || { git rebase --abort; echo "Rebase failed, skipping publish"; exit 0; }
-          git push origin "HEAD:${{ github.ref_name }}"

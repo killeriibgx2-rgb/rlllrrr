@@ -1,7 +1,0 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "fly_drone:block/battery_cabinet",
-    "particle": "fly_drone:block/battery_cabinet"
-  }
-}

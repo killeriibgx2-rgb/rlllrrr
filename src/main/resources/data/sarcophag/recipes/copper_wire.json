@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "CC ",
+    "CCM",
+    "CC "
+  ],
+  "key": {
+    "C": { "item": "minecraft:copper_ingot" },
+    "M": { "item": "sarcophag:stal_molot" }
+  },
+  "result": {
+    "item": "sarcophag:copper_wire",
+    "count": 6
+  }
+}

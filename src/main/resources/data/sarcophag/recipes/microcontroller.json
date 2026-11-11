@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "WWW",
+    "PPP",
+    "WWW"
+  ],
+  "key": {
+    "W": { "item": "sarcophag:copper_wire" },
+    "P": { "item": "sarcophag:copper_plate" }
+  },
+  "result": {
+    "item": "sarcophag:microcontroller",
+    "count": 1
+  }
+}
