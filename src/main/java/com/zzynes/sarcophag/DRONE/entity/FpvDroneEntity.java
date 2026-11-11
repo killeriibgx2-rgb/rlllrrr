@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE.entity;
 
+import com.zzynes.sarcophag.DRONE.DroneText;
 import com.zzynes.sarcophag.DRONE.DroneControlPacket;
 import com.zzynes.sarcophag.DRONE.DroneDisconnectPacket;
 import com.zzynes.sarcophag.DRONE.DroneImpactCamPacket;
@@ -145,7 +146,7 @@ public class FpvDroneEntity extends PathfinderMob implements GeoEntity {
             if (cp == null || cp.level() != sl) {
                 this.forceDisconnect(null);
             } else if (cp.position().distanceTo(this.position()) >= DroneControlPacket.MAX_RANGE) {
-                this.forceDisconnect("Пульт отключён — потеря сигнала");
+                this.forceDisconnect(DroneText.LINK_LOST);
             } else {
                 FpvCameraAnchor.attachOrSync(cp, this);
             }
@@ -241,9 +242,9 @@ public class FpvDroneEntity extends PathfinderMob implements GeoEntity {
         updateTelemetry(throttle);
 
         if (this.entityData.get(BATTERY_TEMP) >= 100.0f) {
-            this.forceDisconnect("Пульт отключён — перегрев аккумулятора");
+            this.forceDisconnect(DroneText.OVERHEAT);
         } else if (this.entityData.get(BATTERY_TICKS) <= 0) {
-            this.forceDisconnect("Пульт отключён — аккумулятор разряжен");
+            this.forceDisconnect(DroneText.NO_CHARGE);
         }
 
         if (this.controllerUUID != null && sl.getServer() != null) {
@@ -251,7 +252,7 @@ public class FpvDroneEntity extends PathfinderMob implements GeoEntity {
             if (cp == null || cp.level() != sl) {
                 this.forceDisconnect(null);
             } else if (cp.position().distanceTo(this.position()) >= DroneControlPacket.MAX_RANGE) {
-                this.forceDisconnect("Пульт отключён — потеря сигнала");
+                this.forceDisconnect(DroneText.LINK_LOST);
             }
         }
 
@@ -490,7 +491,7 @@ public class FpvDroneEntity extends PathfinderMob implements GeoEntity {
             );
             replaceBoundConnectedRemotes(activePilot);
         } else {
-            this.forceDisconnect("Пульт отключён — дрон уничтожен");
+            this.forceDisconnect(DroneText.DRONE_LOST);
         }
 
         int payload = this.entityData.get(PAYLOAD_TYPE);

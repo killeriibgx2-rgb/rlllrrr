@@ -181,7 +181,7 @@ public class SuzControlScreen extends Screen {
             g.fill(barX1, barY1, barX1 + fillW, barY1 + barH, 0xFF3CA370);
         }
 
-        g.drawString(this.font, "Группа СУЗ (повторно — снять):", left + 16, top + 56, 0xFFD8E1EA, false);
+        g.drawString(this.font, "Группа СУЗ (повторно - снять):", left + 16, top + 56, 0xFFD8E1EA, false);
         g.drawString(this.font, "Подъём стержней (0–100%):", left + 16, top + 94, 0xFFD8E1EA, false);
 
         if (!this.errorText.isEmpty()) {

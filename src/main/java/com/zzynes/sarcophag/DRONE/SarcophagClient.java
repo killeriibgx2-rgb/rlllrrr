@@ -1,7 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
 import com.zzynes.sarcophag.DRONE.entity.FpvDroneRenderer;
-import com.zzynes.sarcophag.DRONE.entity.RpgProjectileEntity;
 import com.zzynes.sarcophag.DRONE.entity.client.RpgProjectileRenderer;
 import com.zzynes.sarcophag.DRONE.entity.client.RpgShellModel;
 import com.zzynes.sarcophag.DRONE.entity.client.Ci4Model;

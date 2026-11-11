@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,7 +26,7 @@ public class BshuLinkPacket {
     }
 
     public static void handle(BshuLinkPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null || !player.getItemInHand(InteractionHand.MAIN_HAND).is(Items.STICK)) {
                 return;
@@ -35,6 +36,5 @@ public class BshuLinkPacket {
             }
             VverEvents.linkFromHeldStick(player, packet.blockPos);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

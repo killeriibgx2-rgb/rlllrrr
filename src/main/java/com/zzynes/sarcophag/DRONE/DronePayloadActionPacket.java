@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import com.zzynes.sarcophag.DRONE.entity.FpvDroneEntity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,7 +31,7 @@ public class DronePayloadActionPacket {
     }
 
     public static void handle(DronePayloadActionPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null || packet.action < 0 || packet.action > 1) {
                 return;
@@ -49,7 +50,6 @@ public class DronePayloadActionPacket {
                 drone.selfDestruct(player);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static boolean hasConnectedRemote(ServerPlayer player, UUID droneUuid) {

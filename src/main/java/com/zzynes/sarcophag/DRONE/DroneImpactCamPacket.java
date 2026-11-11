@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -43,7 +44,7 @@ public class DroneImpactCamPacket {
     }
 
     public static void handle(DroneImpactCamPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             if (ctx.get().getDirection().getReceptionSide().isClient()) {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> FpvKillcamManager.triggerKillcam(
                         packet.droneUUID,
@@ -54,6 +55,5 @@ public class DroneImpactCamPacket {
                 ));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

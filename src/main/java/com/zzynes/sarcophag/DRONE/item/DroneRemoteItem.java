@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE.item;
 
+import com.zzynes.sarcophag.DRONE.DroneText;
 import com.zzynes.sarcophag.DRONE.DroneControlPacket;
 import com.zzynes.sarcophag.DRONE.DroneDisconnectPacket;
 import com.zzynes.sarcophag.DRONE.FpvCameraAnchor;
@@ -76,7 +77,7 @@ public class DroneRemoteItem extends Item {
 
             if (drone == null) {
                 if (isLastChunkLoaded(serverLevel, tag)) {
-                    disconnectHand(serverPlayer, hand, droneUUID, "Пульт отключён — дрон уничтожен");
+                    disconnectHand(serverPlayer, hand, droneUUID, DroneText.DRONE_LOST);
                     return InteractionResultHolder.fail(player.getItemInHand(hand));
                 }
                 player.displayClientMessage(Component.literal(ChatFormatting.YELLOW + "Дрон вне прогруженных чанков"), true);
@@ -84,18 +85,18 @@ public class DroneRemoteItem extends Item {
             }
 
             if (!drone.isAlive()) {
-                disconnectHand(serverPlayer, hand, droneUUID, "Пульт отключён — дрон уничтожен");
+                disconnectHand(serverPlayer, hand, droneUUID, DroneText.DRONE_LOST);
                 return InteractionResultHolder.fail(player.getItemInHand(hand));
             }
 
             if (player.position().distanceTo(drone.position()) >= DroneControlPacket.MAX_RANGE) {
-                drone.forceDisconnect("Пульт отключён — потеря сигнала");
-                disconnectHand(serverPlayer, hand, droneUUID, "Пульт отключён — потеря сигнала");
+                drone.forceDisconnect(DroneText.LINK_LOST);
+                disconnectHand(serverPlayer, hand, droneUUID, DroneText.LINK_LOST);
                 return InteractionResultHolder.fail(player.getItemInHand(hand));
             }
 
             updateDroneChunk(tag, drone);
-            player.displayClientMessage(Component.literal(ChatFormatting.YELLOW + "Сброс наряда невозможен — груз не установлен"), true);
+            player.displayClientMessage(Component.literal(ChatFormatting.YELLOW + "Сброс наряда невозможен - груз не установлен"), true);
             return InteractionResultHolder.success(stack);
         }
 
@@ -115,17 +116,17 @@ public class DroneRemoteItem extends Item {
 
         if (drone != null) {
             if (!drone.isAlive()) {
-                disconnectSlot(player, stack, slot, droneUUID, "Пульт отключён — дрон уничтожен");
+                disconnectSlot(player, stack, slot, droneUUID, DroneText.DRONE_LOST);
                 return;
             }
             if (player.position().distanceTo(drone.position()) >= DroneControlPacket.MAX_RANGE) {
-                drone.forceDisconnect("Пульт отключён — потеря сигнала");
-                disconnectSlot(player, stack, slot, droneUUID, "Пульт отключён — потеря сигнала");
+                drone.forceDisconnect(DroneText.LINK_LOST);
+                disconnectSlot(player, stack, slot, droneUUID, DroneText.LINK_LOST);
                 return;
             }
             updateDroneChunk(tag, drone);
         } else if (selected && isLastChunkLoaded(serverLevel, tag)) {
-            disconnectSlot(player, stack, slot, droneUUID, "Пульт отключён — дрон уничтожен");
+            disconnectSlot(player, stack, slot, droneUUID, DroneText.DRONE_LOST);
         }
     }
 

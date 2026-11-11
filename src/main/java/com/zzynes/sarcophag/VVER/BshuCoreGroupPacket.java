@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +33,7 @@ public class BshuCoreGroupPacket {
     }
 
     public static void handle(BshuCoreGroupPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) {
                 return;
@@ -54,6 +55,5 @@ public class BshuCoreGroupPacket {
                 suz.setGroup(group);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

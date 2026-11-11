@@ -367,10 +367,10 @@ public class BshuFocusScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         String hint = this.screenType == BshuScreenType.GCN
-                ? "ГЦН-" + (this.field + 1) + "  •  Enter — применить  •  Esc — выход"
+                ? "ГЦН-" + (this.field + 1) + "  |  Enter - применить  |  Esc - выход"
                 : this.screenType == BshuScreenType.TERTIARY
-                ? "ВСЕ ПАРАМЕТРЫ  •  колесо мыши — прокрутка  •  Esc — выход"
-                : "СУЗ  •  Enter — применить и выйти  •  Esc — отмена";
+                ? "ВСЕ ПАРАМЕТРЫ  |  колесо мыши - прокрутка  |  Esc - выход"
+                : "СУЗ  |  Enter - применить и выйти  |  Esc - отмена";
         int textWidth = this.font.width(hint);
         int x = (this.width - textWidth) / 2;
         int y = this.height - 24;

@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -17,11 +18,10 @@ public class DroneConcussionPacket {
     }
 
     public static void handle(DroneConcussionPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             if (ctx.get().getDirection().getReceptionSide().isClient()) {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> FpvConcussionClient::trigger);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

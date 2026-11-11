@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,7 +43,7 @@ public class BshuInputPacket {
     }
 
     public static void handle(BshuInputPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null || packet.screenOrdinal < 0 || packet.screenOrdinal >= BshuScreenType.values().length) {
                 return;
@@ -62,6 +63,5 @@ public class BshuInputPacket {
                 bshu.applyRodInput(value);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

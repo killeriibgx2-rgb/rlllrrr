@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
+import com.zzynes.sarcophag.NET.PacketUtil;
 import com.zzynes.sarcophag.DRONE.entity.FpvDroneEntity;
 import com.zzynes.sarcophag.DRONE.init.ModItems;
 import net.minecraft.network.FriendlyByteBuf;
@@ -62,7 +63,7 @@ public class DroneControlPacket {
     }
 
     public static void handle(DroneControlPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+        PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
 
@@ -89,7 +90,7 @@ public class DroneControlPacket {
 
             if (player.position().distanceTo(drone.position()) >= MAX_RANGE) {
                 drone.setController(player.getUUID());
-                drone.forceDisconnect("Пульт отключён — потеря сигнала");
+                drone.forceDisconnect(DroneText.LINK_LOST);
                 return;
             }
 
@@ -108,7 +109,6 @@ public class DroneControlPacket {
             drone.addYawRate(packet.yaw);
             FpvCameraAnchor.attachOrSync(player, drone);
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static boolean hasConnectedRemoteInHand(ServerPlayer player, UUID droneUUID) {
