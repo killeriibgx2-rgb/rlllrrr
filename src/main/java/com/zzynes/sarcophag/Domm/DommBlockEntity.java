@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class DommBlockEntity extends BlockEntity implements MenuProvider {
     private int coalStored = 0;
+    // печь греется до 2000, дальше просто держит температуру и жрёт уголь
     private float temperature = 0.0f;
     private boolean isFormed = false;
     private float coalConsumption = 0.0f;
@@ -86,6 +87,7 @@ public class DommBlockEntity extends BlockEntity implements MenuProvider {
         if (level.isClientSide()) return;
 
         entity.tickCounter++;
+        // мультиблок проверяем раз в секунду, каждый тик сканировать соседей дорого
         if (entity.tickCounter >= 20) {
             entity.tickCounter = 0;
             boolean formed = entity.checkMultiblock();
@@ -95,6 +97,7 @@ public class DommBlockEntity extends BlockEntity implements MenuProvider {
         }
 
         if (entity.coalStored > 0 && entity.isFormed) {
+            // недогретая домна не выдаёт продукт, но топливо всё равно тлеет
             if (entity.temperature < 2000.0f) {
                 entity.temperature += 0.3333f;
                 if (entity.temperature > 2000.0f) entity.temperature = 2000.0f;

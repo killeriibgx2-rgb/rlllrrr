@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -33,6 +34,9 @@ public class BshuScrollPacket {
         PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) {
+                return;
+            }
+            if (!PacketRateLimit.allow(player, "bshu_scroll", 8)) {
                 return;
             }
             if (player.position().distanceToSqr(Vec3.atCenterOf(packet.blockPos)) > 400.0) {

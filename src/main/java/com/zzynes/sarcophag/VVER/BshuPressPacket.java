@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -54,6 +55,9 @@ public class BshuPressPacket {
         PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null || packet.controlOrdinal < 0 || packet.controlOrdinal >= BshuControl.values().length) {
+                return;
+            }
+            if (!PacketRateLimit.allow(player, "bshu_press", 6)) {
                 return;
             }
             Vec3 eye = player.getEyePosition();

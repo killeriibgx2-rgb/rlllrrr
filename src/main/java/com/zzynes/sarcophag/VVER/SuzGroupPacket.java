@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -35,7 +36,13 @@ public class SuzGroupPacket {
             if (player == null) {
                 return;
             }
+            if (!PacketRateLimit.allow(player, "suz_group", 3)) {
+                return;
+            }
             if (player.position().distanceToSqr(Vec3.atCenterOf(packet.basePos)) > 256.0) {
+                return;
+            }
+            if (!SuzAccess.has(player, packet.basePos)) {
                 return;
             }
             BlockEntity be = player.serverLevel().getBlockEntity(packet.basePos);

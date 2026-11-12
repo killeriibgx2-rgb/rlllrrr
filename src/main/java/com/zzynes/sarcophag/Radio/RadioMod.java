@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.Radio;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import com.zzynes.sarcophag.DRONE.SarcophagMod;
 import net.minecraft.ChatFormatting;
@@ -41,6 +42,7 @@ import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -52,8 +54,11 @@ import java.util.function.Supplier;
 
 public class RadioMod {
 
+    // кусок голоса влезает в один пакет, больше за раз не шлём
     private static final int AUDIO_CHUNK_SIZE = 24000;
+    // максимум ~30 секунд записи, длиннее не проходит по лимиту пакета
     private static final int MAX_AUDIO_CHUNKS = 64;
+    // 300 блоков, дальше рация не берёт
     private static final double RADIO_RANGE_SQR = 90000.0D;
     private static final Random TRANSFER_RANDOM = new Random();
 
@@ -165,6 +170,7 @@ public class RadioMod {
         return null;
     }
 
+    // слышно только в одном измерении и в пределах дальности
     public static boolean canHearRadio(ServerPlayer sender, ServerPlayer target) {
         return sender.level() == target.level() && sender.distanceToSqr(target) <= RADIO_RANGE_SQR;
     }
@@ -308,6 +314,9 @@ public class RadioMod {
                 if (player == null) {
                     return;
                 }
+                if (!PacketRateLimit.allow(player, "radio_freq", 4)) {
+                    return;
+                }
 
                 if (!RadioFrequency.isValid(p.freq)) {
                     return;
@@ -412,6 +421,9 @@ public class RadioMod {
                 if (sender == null) {
                     return;
                 }
+                if (!PacketRateLimit.allow(sender, "radio_voice", 24)) {
+                    return;
+                }
 
                 ItemStack senderRadio = findRadioInHands(sender);
 
@@ -459,6 +471,8 @@ public class RadioMod {
 
     public static class VoicePlayChunkPacket {
         private static final Map<String, AudioAssembly> ASSEMBLIES = new HashMap<>();
+        private static final long ASSEMBLY_TTL_MILLIS = 30000L;
+        private static final int MAX_ASSEMBLIES = 32;
 
         private final UUID senderId;
         private final int frequency;
@@ -520,9 +534,12 @@ public class RadioMod {
                         AudioAssembly assembly = ASSEMBLIES.get(key);
 
                         if (assembly == null || assembly.totalChunks != p.totalChunks) {
+                            pruneAssemblies();
                             assembly = new AudioAssembly(p.totalChunks);
                             ASSEMBLIES.put(key, assembly);
                         }
+
+                        assembly.lastSeen = System.currentTimeMillis();
 
                         if (!assembly.received[p.chunkIndex]) {
                             assembly.received[p.chunkIndex] = true;
@@ -555,12 +572,27 @@ public class RadioMod {
             private final byte[][] parts;
             private final boolean[] received;
             private int receivedCount;
+            private long lastSeen = System.currentTimeMillis();
 
             private AudioAssembly(int totalChunks) {
                 this.totalChunks = totalChunks;
                 this.parts = new byte[totalChunks][];
                 this.received = new boolean[totalChunks];
                 this.receivedCount = 0;
+            }
+        }
+
+        // недошедшая передача иначе висит в памяти до перезахода в мир
+        private static void pruneAssemblies() {
+            long now = System.currentTimeMillis();
+            ASSEMBLIES.entrySet().removeIf(entry -> now - entry.getValue().lastSeen > ASSEMBLY_TTL_MILLIS);
+            if (ASSEMBLIES.size() < MAX_ASSEMBLIES) {
+                return;
+            }
+            List<String> keys = new ArrayList<>(ASSEMBLIES.keySet());
+            keys.sort((a, b) -> Long.compare(ASSEMBLIES.get(a).lastSeen, ASSEMBLIES.get(b).lastSeen));
+            for (int i = 0; i <= keys.size() - MAX_ASSEMBLIES; i++) {
+                ASSEMBLIES.remove(keys.get(i));
             }
         }
     }
@@ -581,6 +613,9 @@ public class RadioMod {
                 ServerPlayer sender = ctx.get().getSender();
 
                 if (sender == null) {
+                    return;
+                }
+                if (!PacketRateLimit.allow(sender, "radio_signal", 4)) {
                     return;
                 }
 

@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import com.zzynes.sarcophag.DRONE.entity.FpvDroneEntity;
 import com.zzynes.sarcophag.DRONE.init.ModItems;
@@ -68,6 +69,9 @@ public class DroneControlPacket {
         PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
+            if (!PacketRateLimit.allow(player, "drone_control", 4)) {
+                return;
+            }
 
             Entity entity = player.serverLevel().getEntity(packet.droneUUID);
 

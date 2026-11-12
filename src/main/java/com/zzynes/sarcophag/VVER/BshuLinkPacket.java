@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -29,6 +30,9 @@ public class BshuLinkPacket {
         PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null || !player.getItemInHand(InteractionHand.MAIN_HAND).is(Items.STICK)) {
+                return;
+            }
+            if (!PacketRateLimit.allow(player, "bshu_link", 4)) {
                 return;
             }
             if (player.position().distanceToSqr(packet.blockPos.getX() + 0.5, packet.blockPos.getY() + 0.5, packet.blockPos.getZ() + 0.5) > 400.0) {
