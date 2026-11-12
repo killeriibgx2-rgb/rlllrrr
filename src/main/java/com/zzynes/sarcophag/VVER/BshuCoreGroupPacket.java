@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.VVER;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -36,6 +37,9 @@ public class BshuCoreGroupPacket {
         PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) {
+                return;
+            }
+            if (!PacketRateLimit.allow(player, "bshu_core_group", 4)) {
                 return;
             }
             if (player.position().distanceToSqr(Vec3.atCenterOf(packet.bshuPos)) > 400.0) {

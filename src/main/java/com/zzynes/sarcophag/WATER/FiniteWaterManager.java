@@ -39,6 +39,8 @@ public final class FiniteWaterManager {
     private static final int MAX_BODY_UNITS = 20000 * MILLIBUCKETS_PER_UNIT;
     // потолок по клеткам скана, на большом озере без него сервер ложится
     private static final int MAX_SCAN_CELLS = 40000;
+    // и по времени тоже - обход может быть мелким, но дорогим
+    private static final long SCAN_BUDGET_NANOS = 3_000_000L;
     private static final int EQUALIZE_STEPS = 16;
     // поверхность выравниваем порциями, за тик столько успеваем
     private static final int EQUALIZE_MAX_CELLS = 512;
@@ -655,8 +657,13 @@ public final class FiniteWaterManager {
         visited.add(start.asLong());
         queue.add(start);
         int total = 0;
+        long deadline = System.nanoTime() + SCAN_BUDGET_NANOS;
+        int checked = 0;
         while (!queue.isEmpty()) {
             BlockPos pos = queue.removeFirst();
+            if ((++checked & 63) == 0 && System.nanoTime() > deadline) {
+                return null;
+            }
             if (!isOpenFluid(level, pos, session.kind())) {
                 continue;
             }
@@ -1016,11 +1023,16 @@ public final class FiniteWaterManager {
         LongOpenHashSet next = new LongOpenHashSet();
         fluids.put(start.asLong(), volumeAt(level, start, session, true));
         frontier.add(start.asLong());
+        long deadline = System.nanoTime() + SCAN_BUDGET_NANOS;
+        int checked = 0;
         for (int step = 0; step < EQUALIZE_STEPS; step++) {
             next.clear();
             LongIterator frontierIterator = frontier.iterator();
             while (frontierIterator.hasNext()) {
                 BlockPos current = BlockPos.of(frontierIterator.nextLong());
+                if ((++checked & 63) == 0 && System.nanoTime() > deadline) {
+                    return fluids;
+                }
                 boolean walls = false;
                 for (Direction direction : HORIZONTAL_DIRECTIONS) {
                     BlockPos neighbor = current.relative(direction);

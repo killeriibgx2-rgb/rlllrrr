@@ -1,5 +1,6 @@
 package com.zzynes.sarcophag.DRONE;
 
+import com.zzynes.sarcophag.NET.PacketRateLimit;
 import com.zzynes.sarcophag.NET.PacketUtil;
 import com.zzynes.sarcophag.DRONE.entity.FpvDroneEntity;
 import net.minecraft.network.FriendlyByteBuf;
@@ -34,6 +35,9 @@ public class DronePayloadActionPacket {
         PacketUtil.run(ctx, () -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null || packet.action < 0 || packet.action > 1) {
+                return;
+            }
+            if (!PacketRateLimit.allow(player, "drone_payload", 3)) {
                 return;
             }
             Entity entity = player.serverLevel().getEntity(packet.droneUuid);

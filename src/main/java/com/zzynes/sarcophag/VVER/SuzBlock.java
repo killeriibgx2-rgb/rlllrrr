@@ -125,6 +125,9 @@ public class SuzBlock extends BaseEntityBlock {
         }
         if (level.isClientSide) {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> SuzClientHooks.openScreen(basePos));
+        } else {
+            // открыл экран стержней - значит имеет право ими двигать
+            SuzAccess.grant(player, basePos);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

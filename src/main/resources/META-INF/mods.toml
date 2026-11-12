@@ -1,13 +1,19 @@
 modLoader="javafml"
 loaderVersion="[47,)"
 license="Proprietary"
+issueTrackerURL="https://github.com/killeriibgx2-rgb/rlllrrr/issues"
 
 [[mods]]
 modId="sarcophag"
 version="1.1.64"
 displayName="Sarcophag"
 authors="Zzynes"
+logoFile="sarcophag_icon.png"
 description='''
+Бункер, реактор и FPV-дрон.
+
+ВВЭР с активной зоной, стержнями СУЗ и пультом БЩУ, конечная вода с давлением,
+бетон и металл для укреплений, дрон с камерой от первого лица, РПГ и С4.
 '''
 
 [[dependencies.sarcophag]]
@@ -21,5 +27,12 @@ side="BOTH"
 modId="minecraft"
 mandatory=true
 versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sarcophag]]
+modId="geckolib"
+mandatory=true
+versionRange="[4.4.0,)"
 ordering="NONE"
 side="BOTH"

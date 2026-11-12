@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 
 @OnlyIn(Dist.CLIENT)
 public final class RadioAudioClient {
+    // 16 кГц моно хватает для речи и влезает в канал
     private static final float SAMPLE_RATE = 16000.0f;
     private static final int SAMPLE_SIZE_BITS = 16;
     private static final int CHANNELS = 1;
@@ -66,6 +67,7 @@ public final class RadioAudioClient {
                 recording = false;
             }, "SarcophagRadioRecorder");
 
+            // демон, чтобы поток записи не держал игру при выходе
             recordingThread.setDaemon(true);
             recordingThread.start();
         } catch (Exception e) {
