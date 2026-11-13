@@ -7,11 +7,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +36,28 @@ jobs:
       - name: List built jars
         if: success()
         run: ls -lah build/libs
+
+      - name: Publish jar to jar folder
+        if: success()
+        run: |
+          mkdir -p jar
+          rm -f jar/*.jar
+          for f in build/libs/*.jar; do
+            case "$f" in
+              *-sources.jar) ;;
+              *) cp "$f" jar/ ;;
+            esac
+          done
+          ls -lah jar
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A jar
+          if git diff --cached --quiet; then
+            echo "jar is up to date"
+          else
+            git commit -m "Publish jar [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
 
       - name: Upload jar artifact
         if: success()
