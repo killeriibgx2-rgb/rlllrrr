@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.zzynes.sarcophag.DRONE.SarcophagMod;
 import com.zzynes.sarcophag.POWER.CableRoute;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.phys.AABB;
@@ -26,7 +27,7 @@ public final class CablePreviewRenderer {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || !CablePlacer.active()) {
             return;
         }
-        MultiBufferSource.BufferSource buffers = event.getMultiBufferSource();
+        MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         VertexConsumer buffer = buffers.getBuffer(RenderType.lines());
         PoseStack poseStack = event.getPoseStack();
         Vec3 camera = event.getCamera().getPosition();

@@ -11,7 +11,9 @@ import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 // Крепление держится за блок. Убрали блок или рядом рвануло, кабель больше не висит.
 @Mod.EventBusSubscriber(modid = SarcophagMod.MOD_ID)
@@ -41,11 +43,19 @@ public final class CableSupports {
         if (level.isClientSide) {
             return;
         }
-        Vec3 center = event.getExplosion().getPosition();
-        double radius = event.getExplosion().radius;
-        List<CableRunEntity> runs = level.getEntitiesOfClass(CableRunEntity.class, new AABB(center, center).inflate(radius + 2.0));
+        List<BlockPos> blocks = event.getAffectedBlocks();
+        if (blocks.isEmpty()) {
+            return;
+        }
+        Set<BlockPos> touched = new HashSet<>(blocks);
+        AABB area = null;
+        for (BlockPos pos : blocks) {
+            AABB single = new AABB(pos);
+            area = area == null ? single : area.minmax(single);
+        }
+        List<CableRunEntity> runs = level.getEntitiesOfClass(CableRunEntity.class, area.inflate(2.0));
         for (CableRunEntity run : runs) {
-            Vec3 hit = firstPointInside(run.route(), center, radius);
+            Vec3 hit = firstPointInside(run.route(), touched);
             if (hit == null) {
                 continue;
             }
@@ -63,15 +73,14 @@ public final class CableSupports {
         }
     }
 
-    private static Vec3 firstPointInside(CableRoute route, Vec3 center, double radius) {
-        double limit = radius * radius;
+    private static Vec3 firstPointInside(CableRoute route, Set<BlockPos> touched) {
         for (int i = 0; i + 1 < route.size(); i++) {
             Vec3 a = route.pointAt(i);
             Vec3 b = route.pointAt(i + 1);
             int steps = Math.max(1, (int) Math.ceil(a.distanceTo(b) / 0.5));
             for (int s = 0; s <= steps; s++) {
                 Vec3 point = a.lerp(b, s / (double) steps);
-                if (point.distanceToSqr(center) <= limit) {
+                if (touched.contains(BlockPos.containing(point.x, point.y, point.z))) {
                     return point;
                 }
             }

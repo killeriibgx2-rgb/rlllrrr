@@ -37,8 +37,8 @@ jobs:
         if: failure()
         run: |
           if [ -f build-output.log ]; then
-            grep -nE "error:|FAILURE:|What went wrong|Caused by" build-output.log | head -n 200 > build-error.txt
-            tail -n 120 build-output.log >> build-error.txt
+            grep -n -A4 -E "error:" build-output.log | head -n 300 > build-error.txt
+            grep -n -E "What went wrong" -A6 build-output.log >> build-error.txt
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
