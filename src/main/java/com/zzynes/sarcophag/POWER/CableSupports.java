@@ -1,0 +1,81 @@
+package com.zzynes.sarcophag.POWER;
+
+import com.zzynes.sarcophag.DRONE.SarcophagMod;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.event.level.ExplosionEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+import java.util.List;
+
+// Крепление держится за блок. Убрали блок или рядом рвануло, кабель больше не висит.
+@Mod.EventBusSubscriber(modid = SarcophagMod.MOD_ID)
+public final class CableSupports {
+
+    private CableSupports() {
+    }
+
+    @SubscribeEvent
+    public static void onBreak(BlockEvent.BreakEvent event) {
+        if (!(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        BlockPos pos = event.getPos();
+        List<CableRunEntity> runs = level.getEntitiesOfClass(CableRunEntity.class, new AABB(pos).inflate(2.0));
+        for (CableRunEntity run : runs) {
+            if (!run.isSupported()) {
+                run.dropAsItems();
+                run.discard();
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onExplosion(ExplosionEvent.Detonate event) {
+        Level level = event.getLevel();
+        if (level.isClientSide) {
+            return;
+        }
+        Vec3 center = event.getExplosion().getPosition();
+        double radius = event.getExplosion().radius;
+        List<CableRunEntity> runs = level.getEntitiesOfClass(CableRunEntity.class, new AABB(center, center).inflate(radius + 2.0));
+        for (CableRunEntity run : runs) {
+            Vec3 hit = firstPointInside(run.route(), center, radius);
+            if (hit == null) {
+                continue;
+            }
+            List<CableRoute> parts = run.cutAt(hit);
+            CableTier tier = run.tier();
+            CableCore core = run.core();
+            Anchor start = run.start();
+            Anchor end = run.end();
+            run.discard();
+            for (CableRoute part : parts) {
+                CableRunEntity piece = new CableRunEntity(PowerRegistry.CABLE_RUN.get(), level);
+                piece.configure(tier, core, start, end, part);
+                level.addFreshEntity(piece);
+            }
+        }
+    }
+
+    private static Vec3 firstPointInside(CableRoute route, Vec3 center, double radius) {
+        double limit = radius * radius;
+        for (int i = 0; i + 1 < route.size(); i++) {
+            Vec3 a = route.pointAt(i);
+            Vec3 b = route.pointAt(i + 1);
+            int steps = Math.max(1, (int) Math.ceil(a.distanceTo(b) / 0.5));
+            for (int s = 0; s <= steps; s++) {
+                Vec3 point = a.lerp(b, s / (double) steps);
+                if (point.distanceToSqr(center) <= limit) {
+                    return point;
+                }
+            }
+        }
+        return null;
+    }
+}

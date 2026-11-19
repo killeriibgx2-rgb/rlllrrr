@@ -2,6 +2,7 @@ package com.zzynes.sarcophag.DRONE.init;
 
 import com.zzynes.sarcophag.BLOCK.BlockRegistry;
 import com.zzynes.sarcophag.Domm.DommRegistry;
+import com.zzynes.sarcophag.POWER.PowerRegistry;
 import com.zzynes.sarcophag.Radio.RadioMod;
 import com.zzynes.sarcophag.VVER.VverRegistry;
 import com.zzynes.sarcophag.WATER.FiniteWaterBlocks;
@@ -28,6 +29,9 @@ public class ModCreativeTabs {
                         output.accept(ModItems.ALUMINUM_INGOT.get());
                         output.accept(ModItems.LITHIUM_INGOT.get());
                         output.accept(ModItems.COPPER_WIRE.get());
+                        output.accept(PowerRegistry.CABLE_CONTROL.get());
+                        output.accept(PowerRegistry.CABLE_POWER.get());
+                        output.accept(PowerRegistry.CABLE_MAIN.get());
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.CABINET_BATTERY.get());
                         output.accept(BlockRegistry.METAL_BEAM_SUPPORT.get().asItem());

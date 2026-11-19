@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "sarcophag:cable_power"
+    },
+    {
+      "item": "sarcophag:cable_power"
+    },
+    {
+      "item": "sarcophag:cable_power"
+    },
+    {
+      "item": "sarcophag:iron_plate"
+    }
+  ],
+  "result": {
+    "item": "sarcophag:cable_main",
+    "count": 2
+  }
+}

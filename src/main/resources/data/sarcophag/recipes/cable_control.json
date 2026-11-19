@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "sarcophag:copper_wire"
+    },
+    {
+      "item": "sarcophag:copper_wire"
+    },
+    {
+      "item": "sarcophag:copper_wire"
+    },
+    {
+      "item": "sarcophag:copper_wire"
+    },
+    {
+      "item": "minecraft:string"
+    }
+  ],
+  "result": {
+    "item": "sarcophag:cable_control",
+    "count": 4
+  }
+}
