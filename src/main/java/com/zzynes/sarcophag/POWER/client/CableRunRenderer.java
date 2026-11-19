@@ -17,7 +17,8 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
-// Кабель это полосы по граням: четыре боковые плоскости на отрезок плюс заглушки на изломах.
+// Кабель это ряд кубиков по клеткам блока. Каждая грань получает полную текстуру,
+// поэтому рисунок читается как блочный, без растяжений и без заглушек на углах.
 public class CableRunRenderer extends EntityRenderer<CableRunEntity> {
 
     private static final ResourceLocation TEXTURE = new ResourceLocation("sarcophag", "textures/entity/cable.png");
@@ -39,83 +40,69 @@ public class CableRunRenderer extends EntityRenderer<CableRunEntity> {
         }
         VertexConsumer buffer = buffers.getBuffer(RenderType.entityCutoutNoCull(TEXTURE));
         CableCore core = entity.core();
-        double radius = entity.tier().radius;
+        double thickness = entity.tier().radius * 2.0;
+        Vec3 shift = entity.renderShift();
         poseStack.pushPose();
         poseStack.translate(-entity.getX(), -entity.getY(), -entity.getZ());
         Matrix4f matrix = poseStack.last().pose();
         Matrix3f normal = poseStack.last().normal();
         for (int i = 0; i + 1 < route.size(); i++) {
-            Vec3 a = route.pointAt(i);
-            Vec3 b = route.pointAt(i + 1);
-            Vec3 mid = a.add(b).scale(0.5);
-            int light = LevelRenderer.getLightColor(entity.level(), BlockPos.containing(mid.x, mid.y, mid.z));
-            segment(buffer, matrix, normal, a, b, radius, core, light);
-        }
-        for (int i = 1; i + 1 < route.size(); i++) {
-            Vec3 point = route.pointAt(i);
-            int light = LevelRenderer.getLightColor(entity.level(), BlockPos.containing(point.x, point.y, point.z));
-            joint(buffer, matrix, normal, point, radius * 1.15, core, light);
+            Vec3 a = route.pointAt(i).add(shift);
+            Vec3 b = route.pointAt(i + 1).add(shift);
+            int pieces = Math.max(1, (int) Math.round(a.distanceTo(b)));
+            for (int p = 0; p < pieces; p++) {
+                Vec3 from = a.lerp(b, p / (double) pieces);
+                Vec3 to = a.lerp(b, (p + 1) / (double) pieces);
+                int light = LevelRenderer.getLightColor(entity.level(), BlockPos.containing(from));
+                box(buffer, matrix, normal, from, to, thickness, core, light);
+            }
         }
         poseStack.popPose();
         super.render(entity, yaw, partialTick, poseStack, buffers, packedLight);
     }
 
-    private static void segment(VertexConsumer buffer, Matrix4f matrix, Matrix3f normal, Vec3 a, Vec3 b, double radius, CableCore core, int light) {
-        Vec3 axis = b.subtract(a).normalize();
+    private static void box(VertexConsumer buffer, Matrix4f matrix, Matrix3f normals, Vec3 from, Vec3 to, double thickness, CableCore core, int light) {
+        Vec3 axis = to.subtract(from);
+        if (axis.lengthSqr() < 1.0e-8) {
+            return;
+        }
+        axis = axis.normalize();
         Vec3 reference = Math.abs(axis.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
-        Vec3 side = axis.cross(reference).normalize().scale(radius);
-        Vec3 up = side.cross(axis).normalize().scale(radius);
-        Vec3 a1 = a.add(side);
-        Vec3 a2 = a.subtract(side);
-        Vec3 a3 = a.add(up);
-        Vec3 a4 = a.subtract(up);
-        Vec3 b1 = b.add(side);
-        Vec3 b2 = b.subtract(side);
-        Vec3 b3 = b.add(up);
-        Vec3 b4 = b.subtract(up);
-        quad(buffer, matrix, normal, a1, b1, b3, a3, up.normalize(), core, light);
-        quad(buffer, matrix, normal, a4, b4, b2, a2, up.normalize().scale(-1), core, light);
-        quad(buffer, matrix, normal, a3, b3, b4, a4, side.normalize(), core, light);
-        quad(buffer, matrix, normal, a2, b2, b1, a1, side.normalize().scale(-1), core, light);
+        Vec3 side = axis.cross(reference).normalize().scale(thickness * 0.5);
+        Vec3 up = side.cross(axis).normalize().scale(thickness * 0.5);
+        Vec3 a0 = from.subtract(side).subtract(up);
+        Vec3 a1 = from.subtract(side).add(up);
+        Vec3 a2 = from.add(side).add(up);
+        Vec3 a3 = from.add(side).subtract(up);
+        Vec3 b0 = to.subtract(side).subtract(up);
+        Vec3 b1 = to.subtract(side).add(up);
+        Vec3 b2 = to.add(side).add(up);
+        Vec3 b3 = to.add(side).subtract(up);
+        quad(buffer, matrix, normals, a0, a1, a2, a3, axis.scale(-1), core, light);
+        quad(buffer, matrix, normals, b0, b1, b2, b3, axis, core, light);
+        quad(buffer, matrix, normals, a0, a1, b1, b0, side.normalize().scale(-1), core, light);
+        quad(buffer, matrix, normals, a3, a2, b2, b3, side.normalize(), core, light);
+        quad(buffer, matrix, normals, a0, a3, b3, b0, up.normalize().scale(-1), core, light);
+        quad(buffer, matrix, normals, a1, a2, b2, b1, up.normalize(), core, light);
     }
 
-    private static void joint(VertexConsumer buffer, Matrix4f matrix, Matrix3f normal, Vec3 point, double radius, CableCore core, int light) {
-        Vec3 x = new Vec3(radius, 0, 0);
-        Vec3 y = new Vec3(0, radius, 0);
-        Vec3 z = new Vec3(0, 0, radius);
-        Vec3 p0 = point.subtract(x).subtract(y).subtract(z);
-        Vec3 p1 = point.add(x).subtract(y).subtract(z);
-        Vec3 p2 = point.add(x).add(y).subtract(z);
-        Vec3 p3 = point.subtract(x).add(y).subtract(z);
-        Vec3 p4 = point.subtract(x).subtract(y).add(z);
-        Vec3 p5 = point.add(x).subtract(y).add(z);
-        Vec3 p6 = point.add(x).add(y).add(z);
-        Vec3 p7 = point.subtract(x).add(y).add(z);
-        quad(buffer, matrix, normal, p0, p1, p2, p3, new Vec3(0, 0, -1), core, light);
-        quad(buffer, matrix, normal, p4, p5, p6, p7, new Vec3(0, 0, 1), core, light);
-        quad(buffer, matrix, normal, p0, p1, p5, p4, new Vec3(0, -1, 0), core, light);
-        quad(buffer, matrix, normal, p3, p2, p6, p7, new Vec3(0, 1, 0), core, light);
-        quad(buffer, matrix, normal, p0, p3, p7, p4, new Vec3(-1, 0, 0), core, light);
-        quad(buffer, matrix, normal, p1, p2, p6, p5, new Vec3(1, 0, 0), core, light);
-    }
-
-    private static void quad(VertexConsumer buffer, Matrix4f matrix, Matrix3f normal, Vec3 a, Vec3 b, Vec3 c, Vec3 d, Vec3 faceNormal, CableCore core, int light) {
+    private static void quad(VertexConsumer buffer, Matrix4f matrix, Matrix3f normals, Vec3 a, Vec3 b, Vec3 c, Vec3 d, Vec3 face, CableCore core, int light) {
         float r = core.red();
         float g = core.green();
         float bl = core.blue();
-        vertex(buffer, matrix, normal, a, 0f, 1f, faceNormal, r, g, bl, light);
-        vertex(buffer, matrix, normal, b, 1f, 1f, faceNormal, r, g, bl, light);
-        vertex(buffer, matrix, normal, c, 1f, 0f, faceNormal, r, g, bl, light);
-        vertex(buffer, matrix, normal, d, 0f, 0f, faceNormal, r, g, bl, light);
+        vertex(buffer, matrix, normals, a, 0f, 1f, face, r, g, bl, light);
+        vertex(buffer, matrix, normals, b, 0f, 0f, face, r, g, bl, light);
+        vertex(buffer, matrix, normals, c, 1f, 0f, face, r, g, bl, light);
+        vertex(buffer, matrix, normals, d, 1f, 1f, face, r, g, bl, light);
     }
 
-    private static void vertex(VertexConsumer buffer, Matrix4f matrix, Matrix3f normal, Vec3 point, float u, float v, Vec3 faceNormal, float r, float g, float b, int light) {
+    private static void vertex(VertexConsumer buffer, Matrix4f matrix, Matrix3f normals, Vec3 point, float u, float v, Vec3 face, float r, float g, float b, int light) {
         buffer.vertex(matrix, (float) point.x, (float) point.y, (float) point.z)
                 .color(r, g, b, 1.0f)
                 .uv(u, v)
                 .overlayCoords(OverlayTexture.NO_OVERLAY)
                 .uv2(light)
-                .normal(normal, (float) faceNormal.x, (float) faceNormal.y, (float) faceNormal.z)
+                .normal(normals, (float) face.x, (float) face.y, (float) face.z)
                 .endVertex();
     }
 }

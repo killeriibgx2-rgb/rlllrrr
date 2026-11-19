@@ -3,7 +3,6 @@ package com.zzynes.sarcophag.POWER;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -11,108 +10,85 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-// Прокладка трассы: перебор готовых форм (прямая, Г, Z и обход) вместо поиска пути.
-// Так предсказуемо для игрока и дёшево для сервера.
+// Кабель идёт по плоскости одной грани, шаг за шагом по клеткам блока.
+// Свободного полёта нет: каждая клетка должна опираться на твёрдую грань.
 public final class CableRouter {
 
-    public static final int MAX_LENGTH_BLOCKS = 48;
-    private static final double STEP = 0.25;
-    private static final double BEND_PENALTY = 0.15;
-
-    private static final Direction.Axis[][] ORDERS = {
-            {Direction.Axis.X, Direction.Axis.Y, Direction.Axis.Z},
-            {Direction.Axis.X, Direction.Axis.Z, Direction.Axis.Y},
-            {Direction.Axis.Y, Direction.Axis.X, Direction.Axis.Z},
-            {Direction.Axis.Y, Direction.Axis.Z, Direction.Axis.X},
-            {Direction.Axis.Z, Direction.Axis.X, Direction.Axis.Y},
-            {Direction.Axis.Z, Direction.Axis.Y, Direction.Axis.X}
-    };
+    public static final int MAX_CELLS = 48;
+    private static final double BEND_PENALTY = 0.2;
 
     private CableRouter() {
     }
 
     public static Optional<CableRoute> route(Level level, Anchor from, Anchor to) {
-        Vec3 a = from.point();
-        Vec3 b = to.point();
-        if (a.distanceTo(b) > MAX_LENGTH_BLOCKS + 1.0) {
+        Direction face = from.face();
+        if (face != to.face()) {
             return Optional.empty();
         }
-        List<CableRoute> candidates = candidates(a, b);
-        candidates.sort(Comparator.comparingDouble(CableRouter::score));
-        for (CableRoute candidate : candidates) {
-            if (candidate.length() > MAX_LENGTH_BLOCKS || candidate.bends() > 4) {
+        Direction.Axis planeAxis = face.getAxis();
+        Vec3 first = from.point();
+        Vec3 second = to.point();
+        double plane = coord(first, planeAxis);
+        if (Math.abs(plane - coord(second, planeAxis)) > 1.0e-6) {
+            return Optional.empty();
+        }
+        Direction.Axis ta = Anchor.tangentA(planeAxis);
+        Direction.Axis tb = Anchor.tangentB(planeAxis);
+        int a0 = cellOf(coord(first, ta));
+        int a1 = cellOf(coord(first, tb));
+        int b0 = cellOf(coord(second, ta));
+        int b1 = cellOf(coord(second, tb));
+        if (Math.abs(a0 - b0) + Math.abs(a1 - b1) > MAX_CELLS) {
+            return Optional.empty();
+        }
+        List<int[][]> candidates = candidates(a0, a1, b0, b1);
+        candidates.sort(Comparator.comparingDouble(CableRouter::cost));
+        for (int[][] path : candidates) {
+            if (!clear(level, path, face, planeAxis, ta, tb, plane)) {
                 continue;
             }
-            if (!clear(level, candidate)) {
-                continue;
+            CableRoute route = toRoute(path, planeAxis, ta, tb, plane);
+            if (!route.isEmpty()) {
+                return Optional.of(route);
             }
-            return Optional.of(candidate);
         }
         return Optional.empty();
     }
 
-    private static double score(CableRoute route) {
-        return route.length() + route.bends() * BEND_PENALTY;
-    }
-
-    private static List<CableRoute> candidates(Vec3 a, Vec3 b) {
-        List<CableRoute> out = new ArrayList<>(24);
-        for (Direction.Axis[] order : ORDERS) {
-            out.add(stairs(a, b, order));
-            out.add(detour(a, b, order, 1.0));
-            out.add(detour(a, b, order, -1.0));
+    private static List<int[][]> candidates(int a0, int a1, int b0, int b1) {
+        List<int[][]> out = new ArrayList<>(14);
+        for (int offset : new int[]{0, 1, -1, 2, -2, 3, -3}) {
+            out.add(new int[][]{{a0, a1}, {a0 + offset, a1}, {a0 + offset, b1}, {b0, b1}});
+            out.add(new int[][]{{a0, a1}, {a0, a1 + offset}, {b0, a1 + offset}, {b0, b1}});
         }
-        out.removeIf(CableRoute::isEmpty);
         return out;
     }
 
-    private static CableRoute stairs(Vec3 a, Vec3 b, Direction.Axis[] order) {
-        List<Vec3> points = new ArrayList<>(4);
-        points.add(a);
-        Vec3 current = a;
-        for (Direction.Axis axis : order) {
-            double target = coord(b, axis);
-            if (Math.abs(coord(current, axis) - target) < 1.0e-4) {
-                continue;
-            }
-            current = withCoord(current, axis, target);
-            points.add(current);
+    private static double cost(int[][] path) {
+        int steps = 0;
+        for (int i = 0; i + 1 < path.length; i++) {
+            steps += Math.abs(path[i + 1][0] - path[i][0]) + Math.abs(path[i + 1][1] - path[i][1]);
         }
-        points.add(b);
-        return CableRoute.of(points);
+        return steps + (path.length - 2) * BEND_PENALTY;
     }
 
-    private static CableRoute detour(Vec3 a, Vec3 b, Direction.Axis[] order, double offset) {
-        Direction.Axis axis = order[order.length - 1];
-        Vec3 a2 = withCoord(a, axis, coord(a, axis) + offset);
-        Vec3 b2 = withCoord(b, axis, coord(b, axis) + offset);
-        List<Vec3> points = new ArrayList<>(6);
-        points.add(a);
-        points.add(a2);
-        Vec3 current = a2;
-        for (Direction.Axis step : order) {
-            double target = coord(b2, step);
-            if (Math.abs(coord(current, step) - target) < 1.0e-4) {
-                continue;
-            }
-            current = withCoord(current, step, target);
-            points.add(current);
-        }
-        points.add(b);
-        return CableRoute.of(points);
-    }
-
-    private static boolean clear(Level level, CableRoute route) {
-        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
-        for (int i = 0; i + 1 < route.size(); i++) {
-            Vec3 a = route.pointAt(i);
-            Vec3 b = route.pointAt(i + 1);
-            int steps = Math.max(1, (int) Math.ceil(a.distanceTo(b) / STEP));
+    private static boolean clear(Level level, int[][] path, Direction face, Direction.Axis planeAxis, Direction.Axis ta, Direction.Axis tb, double plane) {
+        for (int i = 0; i + 1 < path.length; i++) {
+            int[] from = path[i];
+            int[] to = path[i + 1];
+            int steps = Math.abs(to[0] - from[0]) + Math.abs(to[1] - from[1]);
+            int stepA = Integer.signum(to[0] - from[0]);
+            int stepB = Integer.signum(to[1] - from[1]);
             for (int s = 0; s <= steps; s++) {
-                Vec3 point = a.lerp(b, s / (double) steps);
-                probe.set((int) Math.floor(point.x), (int) Math.floor(point.y), (int) Math.floor(point.z));
-                BlockState state = level.getBlockState(probe);
-                if (!state.isAir() && !state.getCollisionShape(level, probe).isEmpty()) {
+                int cellA = from[0] + stepA * s;
+                int cellB = from[1] + stepB * s;
+                Vec3 point = pointOf(cellA, cellB, planeAxis, ta, tb, plane);
+                BlockPos air = BlockPos.containing(point.x, point.y, point.z);
+                if (!level.getBlockState(air).getCollisionShape(level, air).isEmpty()) {
+                    return false;
+                }
+                BlockPos support = air.relative(face.getOpposite());
+                if (!level.getBlockState(support).isFaceSturdy(level, support, face)) {
                     return false;
                 }
             }
@@ -120,19 +96,78 @@ public final class CableRouter {
         return true;
     }
 
+    private static CableRoute toRoute(int[][] path, Direction.Axis planeAxis, Direction.Axis ta, Direction.Axis tb, double plane) {
+        List<Vec3> points = new ArrayList<>();
+        Vec3 previousDirection = null;
+        Vec3 previousPoint = null;
+        for (int i = 0; i + 1 < path.length; i++) {
+            int[] from = path[i];
+            int[] to = path[i + 1];
+            int steps = Math.abs(to[0] - from[0]) + Math.abs(to[1] - from[1]);
+            int stepA = Integer.signum(to[0] - from[0]);
+            int stepB = Integer.signum(to[1] - from[1]);
+            for (int s = 0; s <= steps; s++) {
+                Vec3 point = pointOf(from[0] + stepA * s, from[1] + stepB * s, planeAxis, ta, tb, plane);
+                if (previousPoint == null) {
+                    points.add(point);
+                } else {
+                    Vec3 direction = point.subtract(previousPoint);
+                    if (direction.lengthSqr() > 1.0e-8) {
+                        direction = direction.normalize();
+                        if (previousDirection != null && !previousDirection.equals(direction)) {
+                            points.add(previousPoint);
+                        }
+                        previousDirection = direction;
+                    }
+                }
+                previousPoint = point;
+            }
+        }
+        if (previousPoint != null) {
+            points.add(previousPoint);
+        }
+        return CableRoute.of(points);
+    }
+
+    public static Vec3 pointOf(int cellA, int cellB, Direction.Axis planeAxis, Direction.Axis ta, Direction.Axis tb, double plane) {
+        double a = cellA + 0.5;
+        double b = cellB + 0.5;
+        double x = 0;
+        double y = 0;
+        double z = 0;
+        if (planeAxis == Direction.Axis.X) {
+            x = plane;
+        } else if (planeAxis == Direction.Axis.Y) {
+            y = plane;
+        } else {
+            z = plane;
+        }
+        if (ta == Direction.Axis.X) {
+            x = a;
+        } else if (ta == Direction.Axis.Y) {
+            y = a;
+        } else {
+            z = a;
+        }
+        if (tb == Direction.Axis.X) {
+            x = b;
+        } else if (tb == Direction.Axis.Y) {
+            y = b;
+        } else {
+            z = b;
+        }
+        return new Vec3(x, y, z);
+    }
+
+    private static int cellOf(double coordinate) {
+        return (int) Math.floor(coordinate);
+    }
+
     private static double coord(Vec3 point, Direction.Axis axis) {
         return switch (axis) {
             case X -> point.x;
             case Y -> point.y;
             default -> point.z;
-        };
-    }
-
-    private static Vec3 withCoord(Vec3 point, Direction.Axis axis, double value) {
-        return switch (axis) {
-            case X -> new Vec3(value, point.y, point.z);
-            case Y -> new Vec3(point.x, value, point.z);
-            default -> new Vec3(point.x, point.y, value);
         };
     }
 }

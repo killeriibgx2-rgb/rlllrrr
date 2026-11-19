@@ -5,9 +5,9 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import java.util.Optional;
 
-// Попадание по кабелю считаем сами: хитбокс сущности это весь прогон,
-// а нужен точный контакт с тонкой жилой.
+// Хитбокс кабеля это набор коробок по клеткам. Куда попал, там и режется.
 public final class CablePick {
 
     public record Hit(CableRunEntity run, Vec3 point, double distance) {
@@ -18,8 +18,8 @@ public final class CablePick {
 
     public static Hit pick(Player player, double reach) {
         Vec3 eye = player.getEyePosition();
-        Vec3 dir = player.getViewVector(1.0f);
-        AABB area = player.getBoundingBox().inflate(reach + 1.0);
+        Vec3 end = eye.add(player.getViewVector(1.0f).scale(reach));
+        AABB area = player.getBoundingBox().inflate(reach + 2.0);
         List<CableRunEntity> runs = player.level().getEntitiesOfClass(CableRunEntity.class, area);
         Hit best = null;
         for (CableRunEntity run : runs) {
@@ -27,48 +27,27 @@ public final class CablePick {
             if (route.isEmpty()) {
                 continue;
             }
-            double radius = run.tier().radius + 0.05;
+            Vec3 shift = run.renderShift();
+            double half = run.tier().radius;
             for (int i = 0; i + 1 < route.size(); i++) {
-                Vec3 a = route.pointAt(i);
-                Vec3 b = route.pointAt(i + 1);
-                double[] result = closest(eye, dir, a, b, reach);
-                if (result == null) {
-                    continue;
-                }
-                if (result[1] > radius * radius) {
-                    continue;
-                }
-                if (best == null || result[0] < best.distance()) {
-                    best = new Hit(run, a.add(b.subtract(a).scale(result[2])), result[0]);
+                Vec3 a = route.pointAt(i).add(shift);
+                Vec3 b = route.pointAt(i + 1).add(shift);
+                int pieces = Math.max(1, (int) Math.round(a.distanceTo(b)));
+                for (int p = 0; p < pieces; p++) {
+                    Vec3 from = a.lerp(b, p / (double) pieces);
+                    Vec3 to = a.lerp(b, (p + 1) / (double) pieces);
+                    AABB box = new AABB(from, to).inflate(half);
+                    Optional<Vec3> hit = box.clip(eye, end);
+                    if (hit.isEmpty()) {
+                        continue;
+                    }
+                    double distance = hit.get().distanceTo(eye);
+                    if (best == null || distance < best.distance()) {
+                        best = new Hit(run, hit.get(), distance);
+                    }
                 }
             }
         }
         return best;
-    }
-
-    // Возвращает {длина по лучу, квадрат расстояния, параметр на отрезке} или null.
-    private static double[] closest(Vec3 eye, Vec3 dir, Vec3 a, Vec3 b, double reach) {
-        Vec3 v = b.subtract(a);
-        Vec3 w0 = eye.subtract(a);
-        double aa = dir.dot(dir);
-        double bb = dir.dot(v);
-        double cc = v.dot(v);
-        double dd = dir.dot(w0);
-        double ee = v.dot(w0);
-        double denom = aa * cc - bb * bb;
-        double sc;
-        double tc;
-        if (Math.abs(denom) < 1.0e-8) {
-            sc = 0.0;
-            tc = cc < 1.0e-8 ? 0.0 : ee / cc;
-        } else {
-            sc = (bb * ee - cc * dd) / denom;
-            tc = (aa * ee - bb * dd) / denom;
-        }
-        sc = Math.max(0.0, Math.min(reach, sc));
-        tc = Math.max(0.0, Math.min(1.0, tc));
-        Vec3 onRay = eye.add(dir.scale(sc));
-        Vec3 onSegment = a.add(v.scale(tc));
-        return new double[]{sc, onRay.distanceToSqr(onSegment), tc};
     }
 }
