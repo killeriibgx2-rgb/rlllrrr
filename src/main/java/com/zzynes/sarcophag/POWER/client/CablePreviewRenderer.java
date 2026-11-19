@@ -4,7 +4,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.zzynes.sarcophag.DRONE.SarcophagMod;
 import com.zzynes.sarcophag.POWER.Anchor;
-import com.zzynes.sarcophag.POWER.CableRoute;
+import com.zzynes.sarcophag.POWER.CableLayout;
+import com.zzynes.sarcophag.POWER.CableStrand;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -33,8 +36,8 @@ public final class CablePreviewRenderer {
         }
         boolean active = CablePlacer.active();
         Anchor marker = active ? CablePlacer.startAnchor() : CablePlacer.hoverAnchor();
-        CableRoute preview = CablePlacer.preview();
-        if (marker == null && preview.size() < 2) {
+        java.util.List<CableLayout.Placement> plan = CablePlacer.plan();
+        if (marker == null && plan.isEmpty()) {
             return;
         }
         PoseStack poseStack = event.getPoseStack();
@@ -45,18 +48,13 @@ public final class CablePreviewRenderer {
 
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
         double half = CablePlacer.tier().radius;
-        if (preview.size() >= 2) {
+        if (!plan.isEmpty()) {
             float red = CablePlacer.valid() ? 0.35f : 1.0f;
             float green = CablePlacer.valid() ? 1.0f : 0.30f;
             float blue = CablePlacer.valid() ? 0.45f : 0.25f;
             VertexConsumer solid = buffers.getBuffer(RenderType.debugQuads());
-            for (int i = 0; i + 1 < preview.size(); i++) {
-                Vec3 a = preview.pointAt(i);
-                Vec3 b = preview.pointAt(i + 1);
-                if (a.distanceToSqr(b) < 1.0e-8) {
-                    continue;
-                }
-                box(solid, matrix, a, b, half, red, green, blue, 0.55f);
+            for (CableLayout.Placement placement : plan) {
+                strand(solid, matrix, placement.pos(), placement.strand(), red, green, blue);
             }
             buffers.endBatch(RenderType.debugQuads());
         }
@@ -72,6 +70,25 @@ public final class CablePreviewRenderer {
             buffers.endBatch(RenderType.lines());
         }
         poseStack.popPose();
+    }
+
+    // Рисуем ровно те жилы, что встанут: кубик сечения плюс полоски до граней клетки.
+    private static void strand(VertexConsumer buffer, Matrix4f matrix, BlockPos pos, CableStrand strand, float r, float g, float b) {
+        double half = strand.tier.radius;
+        Vec3 centre = Vec3.atLowerCornerOf(pos).add(strand.centre());
+        box(buffer, matrix, centre.add(-half, -half, -half), centre.add(half, half, half), 0.0, r, g, b, 0.55f);
+        for (Direction direction : Direction.values()) {
+            if (!strand.connects(direction)) {
+                continue;
+            }
+            Vec3 end = new Vec3(
+                    direction.getStepX() > 0 ? pos.getX() + 1.0 : direction.getStepX() < 0 ? pos.getX() : centre.x,
+                    direction.getStepY() > 0 ? pos.getY() + 1.0 : direction.getStepY() < 0 ? pos.getY() : centre.y,
+                    direction.getStepZ() > 0 ? pos.getZ() + 1.0 : direction.getStepZ() < 0 ? pos.getZ() : centre.z);
+            Vec3 min = new Vec3(Math.min(centre.x, end.x) - half, Math.min(centre.y, end.y) - half, Math.min(centre.z, end.z) - half);
+            Vec3 max = new Vec3(Math.max(centre.x, end.x) + half, Math.max(centre.y, end.y) + half, Math.max(centre.z, end.z) + half);
+            box(buffer, matrix, min, max, 0.0, r, g, b, 0.55f);
+        }
     }
 
     // Коробка вокруг отрезка: расширяем только по двум осям, вдоль оси остаётся точный отрезок.

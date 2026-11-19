@@ -4,6 +4,7 @@ import com.zzynes.sarcophag.DRONE.ModNetwork;
 import com.zzynes.sarcophag.POWER.Anchor;
 import com.zzynes.sarcophag.POWER.CableCore;
 import com.zzynes.sarcophag.POWER.CableItem;
+import com.zzynes.sarcophag.POWER.CableLayout;
 import com.zzynes.sarcophag.POWER.CablePlacePacket;
 import com.zzynes.sarcophag.POWER.CableRoute;
 import com.zzynes.sarcophag.POWER.CableRouter;
@@ -27,6 +28,7 @@ public final class CablePlacer {
     private static Anchor start;
     private static CableTier tier = CableTier.CONTROL;
     private static CableRoute preview = CableRoute.EMPTY;
+    private static java.util.List<CableLayout.Placement> plan = java.util.List.of();
     private static boolean valid;
 
     private CablePlacer() {
@@ -34,7 +36,8 @@ public final class CablePlacer {
 
     public static void click(UseOnContext context, CableTier itemTier) {
         BlockHitResult hit = new BlockHitResult(context.getClickLocation(), context.getClickedFace(), context.getClickedPos(), context.isInside());
-        Anchor anchor = Anchor.fromHit(hit);
+        BlockHitResult through = throughCable(hit);
+        Anchor anchor = Anchor.fromHit(through != null ? through : hit);
         if (context.getPlayer() != null && context.getPlayer().isShiftKeyDown()) {
             cancel();
             return;
@@ -86,13 +89,15 @@ public final class CablePlacer {
             return;
         }
         Optional<CableRoute> route = CableRouter.route(player.level(), start, target, tier);
-        valid = route.isPresent();
         preview = route.orElse(CableRoute.EMPTY);
+        plan = route.map(value -> CableLayout.plan(value, tier, CableCore.byIndex(0))).orElse(java.util.List.of());
+        valid = route.isPresent() && CableLayout.valid(player.level(), plan);
     }
 
     public static void cancel() {
         start = null;
         preview = CableRoute.EMPTY;
+        plan = java.util.List.of();
         valid = false;
     }
 
@@ -113,6 +118,27 @@ public final class CablePlacer {
     }
 
     // Кабель сам стал блоком, поэтому прицел цепляется за него. Для прокладки смотрим сквозь него.
+    // Тот же проход сквозь кабель, но от конкретного попадания, а не от текущего прицела.
+    private static BlockHitResult throughCable(BlockHitResult hit) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return hit;
+        }
+        if (!minecraft.level.getBlockState(hit.getBlockPos()).is(PowerRegistry.CABLE.get())) {
+            return hit;
+        }
+        Vec3 eye = minecraft.player.getEyePosition(1.0f);
+        Vec3 direction = hit.getLocation().subtract(eye);
+        if (direction.lengthSqr() < 1.0e-6) {
+            return hit;
+        }
+        direction = direction.normalize();
+        Vec3 from = hit.getLocation().add(direction.scale(0.06));
+        BlockHitResult behind = minecraft.level.clip(new ClipContext(from, from.add(direction.scale(8.0)),
+                ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, minecraft.player));
+        return behind != null && behind.getType() == HitResult.Type.BLOCK ? behind : hit;
+    }
+
     private static BlockHitResult blockHit() {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) {
@@ -142,6 +168,10 @@ public final class CablePlacer {
 
     public static CableRoute preview() {
         return preview;
+    }
+
+    public static java.util.List<CableLayout.Placement> plan() {
+        return plan;
     }
 
     public static boolean valid() {
