@@ -64,7 +64,7 @@ public class CablePlacePacket {
             }
             double clearance = item.tier().radius;
             for (CableRunEntity other : level.getEntitiesOfClass(CableRunEntity.class, route.get().bounds().inflate(2.0))) {
-                double limit = clearance + other.tier().radius + 0.004;
+                double limit = clearance + other.tier().radius - 0.002;
                 if (route.get().distanceTo(other.route()) < limit) {
                     return;
                 }

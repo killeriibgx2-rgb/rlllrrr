@@ -17,8 +17,8 @@ import net.minecraft.world.phys.HitResult;
 
 import java.util.Optional;
 
-// Прокладка: первый клик задаёт начало, второй заканчивает прогон.
-// Призрак считается на клиенте каждый тик, сервер потом пересчитает по-своему.
+// Прокладка цепочкой: первый клик задаёт начало, каждый следующий добавляет участок
+// и новый конец становится началом следующего. Shift-клик или смена предмета сбрасывают.
 public final class CablePlacer {
 
     private static Anchor start;
@@ -32,6 +32,10 @@ public final class CablePlacer {
     public static void click(UseOnContext context, CableTier itemTier) {
         BlockHitResult hit = new BlockHitResult(context.getClickLocation(), context.getClickedFace(), context.getClickedPos(), context.isInside());
         Anchor anchor = Anchor.fromHit(hit);
+        if (context.getPlayer() != null && context.getPlayer().isShiftKeyDown()) {
+            cancel();
+            return;
+        }
         if (start == null) {
             start = anchor;
             tier = itemTier;
@@ -39,10 +43,16 @@ public final class CablePlacer {
             valid = false;
             return;
         }
-        if (!start.equals(anchor)) {
-            ModNetwork.CHANNEL.sendToServer(new CablePlacePacket(start, anchor, itemTier.ordinal(), coreOf(context.getItemInHand()).ordinal()));
+        if (start.equals(anchor)) {
+            cancel();
+            return;
         }
-        cancel();
+        ModNetwork.CHANNEL.sendToServer(new CablePlacePacket(start, anchor, itemTier.ordinal(), coreOf(context.getItemInHand()).ordinal()));
+        // Цепочка: конец предыдущего участка становится началом следующего.
+        start = anchor;
+        tier = itemTier;
+        preview = CableRoute.EMPTY;
+        valid = false;
     }
 
     public static void tick() {
@@ -84,6 +94,20 @@ public final class CablePlacer {
 
     public static boolean active() {
         return start != null;
+    }
+
+    // Точка, которую видно под прицелом, пока предмет в руке: по ней понятно, откуда начнётся прогон.
+    public static Anchor hoverAnchor() {
+        Minecraft minecraft = Minecraft.getInstance();
+        Player player = minecraft.player;
+        if (player == null || !(player.getMainHandItem().getItem() instanceof CableItem item)) {
+            return null;
+        }
+        tier = item.tier();
+        if (minecraft.hitResult == null || minecraft.hitResult.getType() != HitResult.Type.BLOCK || !(minecraft.hitResult instanceof BlockHitResult hit)) {
+            return null;
+        }
+        return Anchor.fromHit(hit);
     }
 
     public static Anchor startAnchor() {
