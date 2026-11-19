@@ -109,7 +109,7 @@ public final class CableLayout {
             Vec3 point = withCoord(a, axis, cell + along);
             BlockPos pos = BlockPos.containing(point);
             Vec3 local = clamp(point.subtract(Vec3.atLowerCornerOf(pos)));
-            Key key = new Key(pos, (float) local.x, (float) local.y, (float) local.z, tier, core);
+            Key key = new Key(pos, quant(local.x), quant(local.y), quant(local.z), tier, core);
             CableStrand existing = strands.get(key);
             if (existing == null) {
                 strands.put(key, new CableStrand((float) local.x, (float) local.y, (float) local.z, tier, core, conns));
@@ -149,6 +149,10 @@ public final class CableLayout {
             case Y -> new Vec3(point.x, value, point.z);
             default -> new Vec3(point.x, point.y, value);
         };
+    }
+
+    private static int quant(double value) {
+        return (int) Math.round(value * 64.0);
     }
 
     private static Vec3 clamp(Vec3 point) {
@@ -229,6 +233,6 @@ public final class CableLayout {
     public record Placement(BlockPos pos, CableStrand strand) {
     }
 
-    private record Key(BlockPos pos, float x, float y, float z, CableTier tier, CableCore core) {
+    private record Key(BlockPos pos, int x, int y, int z, CableTier tier, CableCore core) {
     }
 }

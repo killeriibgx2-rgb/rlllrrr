@@ -76,7 +76,7 @@ public final class CablePreviewRenderer {
     private static void strand(VertexConsumer buffer, Matrix4f matrix, BlockPos pos, CableStrand strand, float r, float g, float b) {
         double half = strand.tier.radius;
         Vec3 centre = Vec3.atLowerCornerOf(pos).add(strand.centre());
-        box(buffer, matrix, centre.add(-half, -half, -half), centre.add(half, half, half), 0.0, r, g, b, 0.55f);
+        box(buffer, matrix, centre.add(-half, -half, -half), centre.add(half, half, half), 0.0, r, g, b, 0.38f);
         for (Direction direction : Direction.values()) {
             if (!strand.connects(direction)) {
                 continue;
@@ -87,7 +87,7 @@ public final class CablePreviewRenderer {
                     direction.getStepZ() > 0 ? pos.getZ() + 1.0 : direction.getStepZ() < 0 ? pos.getZ() : centre.z);
             Vec3 min = new Vec3(Math.min(centre.x, end.x) - half, Math.min(centre.y, end.y) - half, Math.min(centre.z, end.z) - half);
             Vec3 max = new Vec3(Math.max(centre.x, end.x) + half, Math.max(centre.y, end.y) + half, Math.max(centre.z, end.z) + half);
-            box(buffer, matrix, min, max, 0.0, r, g, b, 0.55f);
+            box(buffer, matrix, min, max, 0.0, r, g, b, 0.38f);
         }
     }
 
