@@ -33,6 +33,19 @@ jobs:
           set -o pipefail
           gradle build --no-daemon -x test --stacktrace 2>&1 | tee build-output.log
 
+      - name: Publish build errors
+        if: failure()
+        run: |
+          if [ -f build-output.log ]; then
+            grep -n -A4 -E "error:" build-output.log | head -n 300 > build-error.txt
+            grep -n -E "What went wrong" -A6 build-output.log >> build-error.txt
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-error.txt
+          git commit -m "Build log [skip ci]" || true
+          git push origin HEAD:${{ github.ref_name }} || true
+
       - name: List built jars
         if: success()
         run: ls -lah build/libs

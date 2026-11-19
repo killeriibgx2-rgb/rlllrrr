@@ -6,6 +6,7 @@ import com.zzynes.sarcophag.DRONE.init.ModCreativeTabs;
 import com.zzynes.sarcophag.DRONE.init.ModEntityTypes;
 import com.zzynes.sarcophag.DRONE.init.ModItems;
 import com.zzynes.sarcophag.Domm.DommRegistry;
+import com.zzynes.sarcophag.POWER.PowerRegistry;
 import com.zzynes.sarcophag.Radio.RadioMod;
 import com.zzynes.sarcophag.VVER.VverRegistry;
 import com.zzynes.sarcophag.WATER.FiniteWaterBlocks;
@@ -39,6 +40,7 @@ public class SarcophagMod {
         DommRegistry.register(modEventBus);
         VverRegistry.register(modEventBus);
         RadioMod.init(modEventBus);
+        PowerRegistry.register(modEventBus);
         BlockRegistry.register(modEventBus);
         ModSounds.register(modEventBus);
         BlastParticleTypes.register(modEventBus);
