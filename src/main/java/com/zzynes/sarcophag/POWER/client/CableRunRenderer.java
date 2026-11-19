@@ -49,11 +49,14 @@ public class CableRunRenderer extends EntityRenderer<CableRunEntity> {
         for (int i = 0; i < segments; i++) {
             Vec3 a = route.pointAt(i);
             Vec3 b = route.pointAt(i + 1);
-            Vec3 axis = b.subtract(a).normalize();
-            Vec3 from = i == 0 ? a : a.subtract(axis.scale(half));
-            Vec3 to = i == segments - 1 ? b : b.add(axis.scale(half));
-            int light = LevelRenderer.getLightColor(entity.level(), BlockPos.containing(from));
-            bar(buffer, matrix, normal, from, to, half, core, light, i == 0, i == segments - 1);
+            int light = LevelRenderer.getLightColor(entity.level(), BlockPos.containing(a));
+            bar(buffer, matrix, normal, a, b, half, core, light, i == 0, i == segments - 1);
+        }
+        // на изломе ставим вставку ровно по сечению: щели закрыты, лишних шипов нет
+        for (int i = 1; i + 1 < route.size(); i++) {
+            Vec3 point = route.pointAt(i);
+            int light = LevelRenderer.getLightColor(entity.level(), BlockPos.containing(point));
+            joint(buffer, matrix, normal, point, half, core, light);
         }
         poseStack.popPose();
         super.render(entity, yaw, partialTick, poseStack, buffers, packedLight);
@@ -91,6 +94,26 @@ public class CableRunRenderer extends EntityRenderer<CableRunEntity> {
         if (capEnd) {
             cap(buffer, matrix, normals, b0, b1, b2, b3, axis, core, light);
         }
+    }
+
+    private static void joint(VertexConsumer buffer, Matrix4f matrix, Matrix3f normals, Vec3 point, double half, CableCore core, int light) {
+        Vec3 x = new Vec3(half, 0, 0);
+        Vec3 y = new Vec3(0, half, 0);
+        Vec3 z = new Vec3(0, 0, half);
+        Vec3 p0 = point.subtract(x).subtract(y).subtract(z);
+        Vec3 p1 = point.add(x).subtract(y).subtract(z);
+        Vec3 p2 = point.add(x).add(y).subtract(z);
+        Vec3 p3 = point.subtract(x).add(y).subtract(z);
+        Vec3 p4 = point.subtract(x).subtract(y).add(z);
+        Vec3 p5 = point.add(x).subtract(y).add(z);
+        Vec3 p6 = point.add(x).add(y).add(z);
+        Vec3 p7 = point.subtract(x).add(y).add(z);
+        cap(buffer, matrix, normals, p0, p1, p2, p3, new Vec3(0, 0, -1), core, light);
+        cap(buffer, matrix, normals, p5, p4, p7, p6, new Vec3(0, 0, 1), core, light);
+        cap(buffer, matrix, normals, p4, p5, p1, p0, new Vec3(0, -1, 0), core, light);
+        cap(buffer, matrix, normals, p3, p2, p6, p7, new Vec3(0, 1, 0), core, light);
+        cap(buffer, matrix, normals, p4, p0, p3, p7, new Vec3(-1, 0, 0), core, light);
+        cap(buffer, matrix, normals, p1, p5, p6, p2, new Vec3(1, 0, 0), core, light);
     }
 
     private static void sideQuad(VertexConsumer buffer, Matrix4f matrix, Matrix3f normals, Vec3 a, Vec3 b, Vec3 c, Vec3 d, Vec3 face, CableCore core, int light, float u) {

@@ -30,9 +30,12 @@ public final class CableRouter {
     private CableRouter() {
     }
 
-    public static Optional<CableRoute> route(Level level, Anchor from, Anchor to) {
-        Vec3 a = from.point();
-        Vec3 b = to.point();
+    public static Optional<CableRoute> route(Level level, Anchor from, Anchor to, CableTier tier) {
+        // Ось кабеля держим на расстоянии половины толщины от поверхности,
+        // иначе он наполовину утопает в блоке.
+        double lift = tier.radius + 0.004;
+        Vec3 a = from.point().add(normal(from.face()).scale(lift));
+        Vec3 b = to.point().add(normal(to.face()).scale(lift));
         if (a.distanceTo(b) > MAX_LENGTH_BLOCKS) {
             return Optional.empty();
         }
@@ -43,6 +46,9 @@ public final class CableRouter {
                 continue;
             }
             if (!clear(level, candidate)) {
+                continue;
+            }
+            if (!hugging(level, candidate, tier)) {
                 continue;
             }
             return Optional.of(candidate);
@@ -116,6 +122,37 @@ public final class CableRouter {
             }
         }
         return true;
+    }
+
+    // Кабель живёт только у поверхности: каждая точка трассы должна быть рядом с блоком.
+    private static boolean hugging(Level level, CableRoute route, CableTier tier) {
+        double reach = tier.radius + 0.12;
+        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        for (int i = 0; i + 1 < route.size(); i++) {
+            Vec3 a = route.pointAt(i);
+            Vec3 b = route.pointAt(i + 1);
+            int steps = Math.max(1, (int) Math.ceil(a.distanceTo(b) / 0.25));
+            for (int s = 0; s <= steps; s++) {
+                Vec3 point = a.lerp(b, s / (double) steps);
+                probe.set((int) Math.floor(point.x), (int) Math.floor(point.y), (int) Math.floor(point.z));
+                boolean near = false;
+                for (Direction direction : Direction.values()) {
+                    BlockPos neighbour = probe.relative(direction);
+                    if (!level.getBlockState(neighbour).getCollisionShape(level, neighbour).isEmpty()) {
+                        near = true;
+                        break;
+                    }
+                }
+                if (!near) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static Vec3 normal(Direction face) {
+        return new Vec3(face.getStepX(), face.getStepY(), face.getStepZ());
     }
 
     private static double coord(Vec3 point, Direction.Axis axis) {

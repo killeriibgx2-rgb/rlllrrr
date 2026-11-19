@@ -1,6 +1,5 @@
 package com.zzynes.sarcophag.DRONE;
 
-import com.zzynes.sarcophag.POWER.CableCutPacket;
 import com.zzynes.sarcophag.POWER.CablePlacePacket;
 import com.zzynes.sarcophag.VVER.SuzPercentPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -74,10 +73,5 @@ public class ModNetwork {
                 .consumerMainThread(CablePlacePacket::handle)
                 .add();
 
-        CHANNEL.messageBuilder(CableCutPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(CableCutPacket::encode)
-                .decoder(CableCutPacket::decode)
-                .consumerMainThread(CableCutPacket::handle)
-                .add();
     }
 }
