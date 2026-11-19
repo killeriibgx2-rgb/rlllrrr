@@ -117,7 +117,8 @@ public class CableRunEntity extends Entity implements IEntityAdditionalSpawnData
     @Override
     protected AABB makeBoundingBox() {
         if (route != null && !route.isEmpty()) {
-            return route.bounds();
+            // рамка по толщине провода: параллельные линии остаются разными целями
+            return route.bounds().inflate(tier().radius + 0.03);
         }
         return super.makeBoundingBox();
     }

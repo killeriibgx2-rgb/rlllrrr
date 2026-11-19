@@ -62,6 +62,13 @@ public class CablePlacePacket {
             if (route.isEmpty()) {
                 return;
             }
+            double clearance = item.tier().radius;
+            for (CableRunEntity other : level.getEntitiesOfClass(CableRunEntity.class, route.get().bounds().inflate(2.0))) {
+                double limit = clearance + other.tier().radius + 0.004;
+                if (route.get().distanceTo(other.route()) < limit) {
+                    return;
+                }
+            }
             CableRunEntity run = new CableRunEntity(PowerRegistry.CABLE_RUN.get(), level);
             run.configure(item.tier(), CableCore.byIndex(packet.core), packet.start, packet.end, route.get());
             level.addFreshEntity(run);

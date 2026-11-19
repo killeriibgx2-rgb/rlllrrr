@@ -1,9 +1,9 @@
 package com.zzynes.sarcophag.POWER;
 
 public enum CableTier {
-    CONTROL(0.0625, 20, 0.0070),
-    POWER(0.09375, 90, 0.0011),
-    MAIN(0.15625, 400, 0.00007);
+    CONTROL(0.03125, 20, 0.0070),
+    POWER(0.0625, 90, 0.0011),
+    MAIN(0.09375, 400, 0.00007);
 
     public final double radius;
     public final int maxAmps;
