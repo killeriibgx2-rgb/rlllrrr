@@ -74,16 +74,6 @@ public class CableRunEntity extends Entity implements IEntityAdditionalSpawnData
         return end;
     }
 
-    public net.minecraft.core.Direction face() {
-        return start != null ? start.face() : net.minecraft.core.Direction.UP;
-    }
-
-    // Сдвиг от плоскости грани наружу: кабель лежит на поверхности, а не внутри неё.
-    public Vec3 renderShift() {
-        net.minecraft.core.Direction face = face();
-        double thickness = tier().radius * 2.0;
-        return new Vec3(face.getStepX(), face.getStepY(), face.getStepZ()).scale(thickness * 0.5 + 0.004);
-    }
 
     // Прогон держится, пока хотя бы одно крепление упирается в твёрдую грань.
     public boolean isSupported() {
