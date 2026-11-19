@@ -22,10 +22,12 @@ public final class CableLayout {
     private CableLayout() {
     }
 
-    public static boolean place(Level level, CableRoute route, CableTier tier, CableCore core) {
+    // План: одни и те же клетки считает и призрак на клиенте, и установка на сервере.
+    public static List<Placement> plan(CableRoute route, CableTier tier, CableCore core) {
+        List<Placement> out = new ArrayList<>();
         List<Vec3> points = route.points();
         if (points.size() < 2) {
-            return false;
+            return out;
         }
 
         Map<Key, CableStrand> strands = new LinkedHashMap<>();
@@ -37,19 +39,28 @@ public final class CableLayout {
             }
             addSegment(strands, a, b, tier, core);
         }
-        if (strands.isEmpty()) {
+        for (Map.Entry<Key, CableStrand> entry : strands.entrySet()) {
+            out.add(new Placement(entry.getKey().pos, entry.getValue()));
+        }
+        return out;
+    }
+
+    public static boolean valid(Level level, List<Placement> plan) {
+        if (plan.isEmpty()) {
             return false;
         }
-
-        List<Placement> placements = new ArrayList<>(strands.size());
-        for (Map.Entry<Key, CableStrand> entry : strands.entrySet()) {
-            placements.add(new Placement(entry.getKey().pos, entry.getValue()));
-        }
-
-        for (Placement placement : placements) {
+        for (Placement placement : plan) {
             if (!free(level, placement)) {
                 return false;
             }
+        }
+        return true;
+    }
+
+    public static boolean place(Level level, CableRoute route, CableTier tier, CableCore core) {
+        List<Placement> placements = plan(route, tier, core);
+        if (!valid(level, placements)) {
+            return false;
         }
         for (Placement placement : placements) {
             commit(level, placement);
@@ -215,7 +226,7 @@ public final class CableLayout {
         };
     }
 
-    private record Placement(BlockPos pos, CableStrand strand) {
+    public record Placement(BlockPos pos, CableStrand strand) {
     }
 
     private record Key(BlockPos pos, float x, float y, float z, CableTier tier, CableCore core) {
