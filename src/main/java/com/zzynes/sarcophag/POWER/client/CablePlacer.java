@@ -8,12 +8,15 @@ import com.zzynes.sarcophag.POWER.CablePlacePacket;
 import com.zzynes.sarcophag.POWER.CableRoute;
 import com.zzynes.sarcophag.POWER.CableRouter;
 import com.zzynes.sarcophag.POWER.CableTier;
+import com.zzynes.sarcophag.POWER.PowerRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Optional;
 
@@ -70,7 +73,8 @@ public final class CablePlacer {
             cancel();
             return;
         }
-        if (minecraft.hitResult == null || minecraft.hitResult.getType() != HitResult.Type.BLOCK || !(minecraft.hitResult instanceof BlockHitResult hit)) {
+        BlockHitResult hit = blockHit();
+        if (hit == null) {
             preview = CableRoute.EMPTY;
             valid = false;
             return;
@@ -104,10 +108,32 @@ public final class CablePlacer {
             return null;
         }
         tier = item.tier();
-        if (minecraft.hitResult == null || minecraft.hitResult.getType() != HitResult.Type.BLOCK || !(minecraft.hitResult instanceof BlockHitResult hit)) {
+        BlockHitResult hit = blockHit();
+        return hit == null ? null : Anchor.fromHit(hit);
+    }
+
+    // Кабель сам стал блоком, поэтому прицел цепляется за него. Для прокладки смотрим сквозь него.
+    private static BlockHitResult blockHit() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
             return null;
         }
-        return Anchor.fromHit(hit);
+        if (!(minecraft.hitResult instanceof BlockHitResult hit) || minecraft.hitResult.getType() != HitResult.Type.BLOCK) {
+            return null;
+        }
+        if (!minecraft.level.getBlockState(hit.getBlockPos()).is(PowerRegistry.CABLE.get())) {
+            return hit;
+        }
+        Vec3 eye = minecraft.player.getEyePosition(1.0f);
+        Vec3 direction = hit.getLocation().subtract(eye);
+        if (direction.lengthSqr() < 1.0e-6) {
+            return hit;
+        }
+        direction = direction.normalize();
+        Vec3 from = hit.getLocation().add(direction.scale(0.06));
+        BlockHitResult behind = minecraft.level.clip(new ClipContext(from, from.add(direction.scale(8.0)),
+                ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, minecraft.player));
+        return behind != null && behind.getType() == HitResult.Type.BLOCK ? behind : hit;
     }
 
     public static Anchor startAnchor() {
