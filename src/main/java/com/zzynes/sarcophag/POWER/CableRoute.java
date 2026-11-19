@@ -84,7 +84,7 @@ public final class CableRoute {
             maxY = Math.max(maxY, point.y);
             maxZ = Math.max(maxZ, point.z);
         }
-        return new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(0.35);
+        return new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(0.02);
     }
 
     // Режет трассу в ближайшей к точке точке. Возвращает до двух частей.
@@ -159,6 +159,40 @@ public final class CableRoute {
                 bestDistance = distance;
                 best = onEdge;
             }
+        }
+        return best;
+    }
+
+    // Минимальное расстояние до другой трассы: нужно, чтобы провода не наезжали друг на друга.
+    public double distanceTo(CableRoute other) {
+        if (isEmpty() || other.isEmpty()) {
+            return Double.MAX_VALUE;
+        }
+        double best = Double.MAX_VALUE;
+        for (int i = 0; i + 1 < points.size(); i++) {
+            Vec3 a = points.get(i);
+            Vec3 b = points.get(i + 1);
+            int steps = Math.max(1, (int) Math.ceil(a.distanceTo(b) / 0.25));
+            for (int s = 0; s <= steps; s++) {
+                Vec3 point = a.lerp(b, s / (double) steps);
+                best = Math.min(best, other.distanceToSegment(point));
+                if (best < 1.0e-3) {
+                    return best;
+                }
+            }
+        }
+        return best;
+    }
+
+    private double distanceToSegment(Vec3 point) {
+        double best = Double.MAX_VALUE;
+        for (int i = 0; i + 1 < points.size(); i++) {
+            Vec3 a = points.get(i);
+            Vec3 b = points.get(i + 1);
+            Vec3 edge = b.subtract(a);
+            double lengthSqr = edge.lengthSqr();
+            double t = lengthSqr < 1.0e-8 ? 0.0 : Math.max(0.0, Math.min(1.0, point.subtract(a).dot(edge) / lengthSqr));
+            best = Math.min(best, a.add(edge.scale(t)).distanceTo(point));
         }
         return best;
     }
