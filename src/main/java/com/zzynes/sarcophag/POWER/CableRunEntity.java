@@ -7,9 +7,11 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -122,7 +124,41 @@ public class CableRunEntity extends Entity implements IEntityAdditionalSpawnData
 
     @Override
     public boolean isPickable() {
-        return false;
+        return true;
+    }
+
+    @Override
+    public boolean isAttackable() {
+        return true;
+    }
+
+    // Удар по кабелю: режем ровно там, куда пришёлся луч взгляда. С шифтом снимаем целиком.
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        if (this.level().isClientSide()) {
+            return false;
+        }
+        if (!(source.getEntity() instanceof Player player)) {
+            return false;
+        }
+        Vec3 point = route.nearestPoint(player.getEyePosition(), player.getViewVector(1.0f));
+        if (player.isShiftKeyDown()) {
+            dropAsItems();
+            discard();
+            return true;
+        }
+        CableTier tier = tier();
+        CableCore core = core();
+        Anchor from = start;
+        Anchor to = end;
+        List<CableRoute> parts = route.cut(point);
+        discard();
+        for (CableRoute part : parts) {
+            CableRunEntity piece = new CableRunEntity(PowerRegistry.CABLE_RUN.get(), this.level());
+            piece.configure(tier, core, from, to, part);
+            this.level().addFreshEntity(piece);
+        }
+        return true;
     }
 
     @Override

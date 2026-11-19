@@ -58,7 +58,7 @@ public class CablePlacePacket {
                 return;
             }
             ServerLevel level = player.serverLevel();
-            Optional<CableRoute> route = CableRouter.route(level, packet.start, packet.end);
+            Optional<CableRoute> route = CableRouter.route(level, packet.start, packet.end, item.tier());
             if (route.isEmpty()) {
                 return;
             }

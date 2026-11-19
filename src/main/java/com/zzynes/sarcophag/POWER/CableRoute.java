@@ -126,6 +126,43 @@ public final class CableRoute {
         return parts;
     }
 
+    // Ближайшая точка трассы к лучу взгляда, нужна для удара по кабелю.
+    public Vec3 nearestPoint(Vec3 origin, Vec3 direction) {
+        Vec3 best = pointAt(0);
+        double bestDistance = Double.MAX_VALUE;
+        for (int i = 0; i + 1 < points.size(); i++) {
+            Vec3 a = points.get(i);
+            Vec3 b = points.get(i + 1);
+            Vec3 edge = b.subtract(a);
+            Vec3 w0 = origin.subtract(a);
+            double aa = direction.dot(direction);
+            double bb = direction.dot(edge);
+            double cc = edge.dot(edge);
+            double dd = direction.dot(w0);
+            double ee = edge.dot(w0);
+            double denom = aa * cc - bb * bb;
+            double rayT;
+            double edgeT;
+            if (Math.abs(denom) < 1.0e-8) {
+                rayT = 0.0;
+                edgeT = cc < 1.0e-8 ? 0.0 : ee / cc;
+            } else {
+                rayT = (bb * ee - cc * dd) / denom;
+                edgeT = (aa * ee - bb * dd) / denom;
+            }
+            rayT = Math.max(0.0, rayT);
+            edgeT = Math.max(0.0, Math.min(1.0, edgeT));
+            Vec3 onRay = origin.add(direction.scale(rayT));
+            Vec3 onEdge = a.add(edge.scale(edgeT));
+            double distance = onRay.distanceToSqr(onEdge);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = onEdge;
+            }
+        }
+        return best;
+    }
+
     public CompoundTag save() {
         ListTag list = new ListTag();
         for (Vec3 point : points) {

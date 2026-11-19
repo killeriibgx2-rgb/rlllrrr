@@ -71,7 +71,7 @@ public final class CablePlacer {
             valid = false;
             return;
         }
-        Optional<CableRoute> route = CableRouter.route(player.level(), start, target);
+        Optional<CableRoute> route = CableRouter.route(player.level(), start, target, tier);
         valid = route.isPresent();
         preview = route.orElse(CableRoute.EMPTY);
     }
@@ -96,6 +96,10 @@ public final class CablePlacer {
 
     public static boolean valid() {
         return valid;
+    }
+
+    public static CableTier tier() {
+        return tier;
     }
 
     private static CableCore coreOf(ItemStack stack) {

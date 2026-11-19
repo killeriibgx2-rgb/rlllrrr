@@ -38,14 +38,16 @@ public final class CablePreviewRenderer {
         float green = CablePlacer.valid() ? 1.0f : 0.25f;
         float blue = CablePlacer.valid() ? 0.40f : 0.20f;
 
+        double half = CablePlacer.tier().radius;
         if (CablePlacer.startAnchor() != null) {
-            box(poseStack, buffer, new AABB(CablePlacer.startAnchor().point(), CablePlacer.startAnchor().point()).inflate(0.06), 1.0f, 0.85f, 0.3f, 1.0f);
+            Vec3 anchor = CablePlacer.startAnchor().point();
+            box(poseStack, buffer, new AABB(anchor, anchor).inflate(half * 1.5), 1.0f, 0.85f, 0.3f, 1.0f);
         }
         CableRoute preview = CablePlacer.preview();
         for (int i = 0; i + 1 < preview.size(); i++) {
             Vec3 a = preview.pointAt(i);
             Vec3 b = preview.pointAt(i + 1);
-            box(poseStack, buffer, new AABB(a, b).inflate(0.03), red, green, blue, 1.0f);
+            box(poseStack, buffer, new AABB(a, b).inflate(half), red, green, blue, 1.0f);
         }
         poseStack.popPose();
         buffers.endBatch(RenderType.lines());
