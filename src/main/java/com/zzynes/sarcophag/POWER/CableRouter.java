@@ -33,7 +33,7 @@ public final class CableRouter {
     public static Optional<CableRoute> route(Level level, Anchor from, Anchor to, CableTier tier) {
         // Ось кабеля держим на расстоянии половины толщины от поверхности,
         // иначе он наполовину утопает в блоке.
-        double lift = tier.radius + 0.004;
+        double lift = tier.radius;
         Vec3 a = from.point().add(normal(from.face()).scale(lift));
         Vec3 b = to.point().add(normal(to.face()).scale(lift));
         if (a.distanceTo(b) > MAX_LENGTH_BLOCKS) {

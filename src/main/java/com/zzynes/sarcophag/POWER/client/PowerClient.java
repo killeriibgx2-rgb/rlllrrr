@@ -15,6 +15,6 @@ public final class PowerClient {
 
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(PowerRegistry.CABLE_RUN.get(), CableRunRenderer::new);
+        event.registerBlockEntityRenderer(PowerRegistry.CABLE_BE.get(), CableBlockRenderer::new);
     }
 }
