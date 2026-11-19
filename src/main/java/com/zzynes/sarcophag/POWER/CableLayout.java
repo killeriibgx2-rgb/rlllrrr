@@ -62,9 +62,6 @@ public final class CableLayout {
         for (Map.Entry<BlockPos, Cell> entry : cells.entrySet()) {
             BlockPos pos = entry.getKey();
             Cell cell = entry.getValue();
-            if (cell.ports.isEmpty()) {
-                continue;
-            }
             Vec3 centre;
             Vec3 bend = bends.get(pos);
             if (bend != null) {
@@ -75,8 +72,11 @@ public final class CableLayout {
                 centre = last;
             } else {
                 centre = straightCentre(pos, cell);
+                if (centre == null) {
+                    continue;
+                }
             }
-            Vec3 local = snap(centre.subtract(Vec3.atLowerCornerOf(pos)));
+            Vec3 local = clamp(snap(centre.subtract(Vec3.atLowerCornerOf(pos))));
             placements.add(new Placement(pos, new CableStrand(
                     (float) local.x, (float) local.y, (float) local.z, tier, core, cell.mask())));
         }
@@ -89,10 +89,57 @@ public final class CableLayout {
         for (Placement placement : placements) {
             commit(level, placement);
         }
+        link(level, placements);
         return true;
     }
 
+    // Сшивка по факту: если у соседа есть жила на той же линии, стороны соединяются с обеих сторон.
+    private static void link(Level level, List<Placement> placements) {
+        for (Placement placement : placements) {
+            for (Direction direction : Direction.values()) {
+                BlockPos next = placement.pos.relative(direction);
+                if (!(level.getBlockEntity(next) instanceof CableBlockEntity neighbour)) {
+                    continue;
+                }
+                for (CableStrand strand : neighbour.strands()) {
+                    if (strand.tier != placement.strand.tier || strand.core != placement.strand.core) {
+                        continue;
+                    }
+                    if (aligned(placement.strand, strand, direction)) {
+                        placement.strand.connect(direction);
+                        strand.connect(direction.getOpposite());
+                        neighbour.refresh();
+                    }
+                }
+            }
+        }
+        for (Placement placement : placements) {
+            if (level.getBlockEntity(placement.pos) instanceof CableBlockEntity cable) {
+                cable.refresh();
+            }
+        }
+    }
+
+    private static boolean aligned(CableStrand a, CableStrand b, Direction direction) {
+        double limit = 1.0 / 64.0 + 1.0e-4;
+        return switch (direction.getAxis()) {
+            case X -> Math.abs(a.y - b.y) < limit && Math.abs(a.z - b.z) < limit;
+            case Y -> Math.abs(a.x - b.x) < limit && Math.abs(a.z - b.z) < limit;
+            case Z -> Math.abs(a.x - b.x) < limit && Math.abs(a.y - b.y) < limit;
+        };
+    }
+
+    private static Vec3 clamp(Vec3 point) {
+        return new Vec3(
+                Math.max(0.0, Math.min(1.0, point.x)),
+                Math.max(0.0, Math.min(1.0, point.y)),
+                Math.max(0.0, Math.min(1.0, point.z)));
+    }
+
     private static Vec3 straightCentre(BlockPos pos, Cell cell) {
+        if (cell.points.isEmpty()) {
+            return null;
+        }
         double x = 0.0;
         double y = 0.0;
         double z = 0.0;

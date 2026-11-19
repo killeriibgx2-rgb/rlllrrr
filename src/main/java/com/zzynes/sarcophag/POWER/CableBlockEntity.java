@@ -62,6 +62,10 @@ public class CableBlockEntity extends BlockEntity {
         return shape;
     }
 
+    public void refresh() {
+        dropShape();
+    }
+
     private void dropShape() {
         shape = null;
         setChanged();
