@@ -3,6 +3,7 @@ package com.zzynes.sarcophag.POWER;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public final class CableRouter {
     public static Optional<CableRoute> route(Level level, Anchor from, Anchor to, CableTier tier) {
         // Ось кабеля держим на расстоянии половины толщины от поверхности,
         // иначе он наполовину утопает в блоке.
-        double lift = tier.radius + 0.004;
+        double lift = tier.radius;
         Vec3 a = from.point().add(normal(from.face()).scale(lift));
         Vec3 b = to.point().add(normal(to.face()).scale(lift));
         if (a.distanceTo(b) > MAX_LENGTH_BLOCKS) {
@@ -116,7 +117,13 @@ public final class CableRouter {
             for (int s = 0; s <= steps; s++) {
                 Vec3 point = a.lerp(b, s / (double) steps);
                 probe.set((int) Math.floor(point.x), (int) Math.floor(point.y), (int) Math.floor(point.z));
-                if (!level.getBlockState(probe).getCollisionShape(level, probe).isEmpty()) {
+                BlockState state = level.getBlockState(probe);
+                if (state.is(PowerRegistry.CABLE.get())) {
+                    // своя же клетка не помеха: жил в ней может быть сколько угодно,
+                    // наложение проверит раскладка по толщине
+                    continue;
+                }
+                if (!state.getCollisionShape(level, probe).isEmpty()) {
                     return false;
                 }
             }

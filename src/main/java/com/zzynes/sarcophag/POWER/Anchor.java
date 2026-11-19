@@ -13,7 +13,7 @@ import java.util.Objects;
 // Ставится туда, куда ткнули, а не в центр.
 public final class Anchor {
 
-    public static final double SURFACE = 0.02;
+    public static final double SURFACE = 0.0;
     private static final float SNAP = 16f;
 
     private final BlockPos pos;
